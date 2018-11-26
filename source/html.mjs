@@ -8,10 +8,8 @@ const TEXT = 1;
 const offset = "    ";
 
 /**
- * An AST node for text data.
+ * A node for text data.
  * @param  {string}  str     The text value of the node.
- * @memberof module:wick~internals.html
- * @alias TextNode
  */
 class TextNode {
 
@@ -42,18 +40,17 @@ class TextNode {
      * Builds a real DOM HTMLTextNode node. 
      * @param      {HTMLElement}  parent  The real html element.
      */
-    _build_(parent) {
+    build(parent) {
         parent.appendChild(document.createTextNode(this.txt));
     }
 
 }
 
-Object.assign(TextNode.prototype, ll.props.defaults, ll.props.parent, ll.methods.defaults);
-
+ll.mixinTree(TextNode);
 
 
 /**
- * An AST node for HTML data. 
+ * A node for HTML data. 
  * Handles the parsing of HTML strings.
  */
 class HTMLNode {
@@ -61,10 +58,10 @@ class HTMLNode {
     constructor() {
 
         /**
-         * Element _attributes_
+         * Element attributes
          * @public
          */
-        this._attributes_ = [];
+        this.attributes = [];
 
         /**
          * Any Comment Lines found within.
@@ -137,12 +134,12 @@ class HTMLNode {
 
             if (this == guard) return null;
 
-            let node = this.pre;
+            let node = this.prv;
 
             while (node && node != gaurd) {
                 if (node.type == HTML)
                     return node;
-                node = node.pre;
+                node = node.prv;
             }
 
             if (node.type == HTML)
@@ -174,8 +171,8 @@ class HTMLNode {
      * @public
      */
     getAttrib(prop) {
-        for (let i = -1, l = this._attributes_.length; ++i < l;) {
-            let attrib = this._attributes_[i];
+        for (let i = -1, l = this.attributes.length; ++i < l;) {
+            let attrib = this.attributes[i];
             if (attrib.name == prop) return attrib;
         }
         return null;
@@ -193,7 +190,7 @@ class HTMLNode {
      */
     getTag(tag, INCLUDE_DESCENDANTS = false, array = []) {
         for (let node = this.fch; node;
-            (node = this.getN(node))) {
+            (node = this.getNextChild(node))) {
             if (node.type == HTML) {
                 if (node.tag == tag) array.push(node);
                 if (INCLUDE_DESCENDANTS) node.getTag(tag, INCLUDE_DESCENDANTS, array);
@@ -214,7 +211,7 @@ class HTMLNode {
      */
     getClass(_class, INCLUDE_DESCENDANTS = false, array = []) {
         for (let node = this.fch; node;
-            (node = this.getN(node))) {
+            (node = this.getNextChild(node))) {
             if (node.type == HTML) {
                 if (node.class.includes(_class)) array.push(node);
                 if (INCLUDE_DESCENDANTS) node.getClass(_class, INCLUDE_DESCENDANTS, array);
@@ -234,7 +231,7 @@ class HTMLNode {
      */
     getID(id, INCLUDE_DESCENDANTS = false) {
         for (let node = this.fch, ch; node;
-            (node = this.getN(node))) {
+            (node = this.getNextChild(node))) {
             if (node.type == HTML) {
                 if (node.id == id) return node;
                 if (INCLUDE_DESCENDANTS && (ch = node.getID(id, INCLUDE_DESCENDANTS))) return ch;
@@ -276,7 +273,7 @@ class HTMLNode {
         let o = offset.repeat(off);
 
         let str = `${o}<${this.tag}`,
-            atr = this._attributes_,
+            atr = this.attributes,
             i = -1,
             l = atr.length;
 
@@ -291,7 +288,7 @@ class HTMLNode {
             return str;
 
         for (let node = this.fch; node;
-            (node = this.getN(node))) {
+            (node = this.getNextChild(node))) {
             str += node.toString(off+1);
         }
 
@@ -311,16 +308,15 @@ class HTMLNode {
      * @param      {start}  start   The starting point of the data slice
      * @private
      */
-    _createTextNode_(lex, start, end) {
+    createTextNode(lex, start, end) {
         if (end) {
             let other_lex = lex.copy();
             other_lex.IWS = true;
             other_lex.off = start - 1;
             other_lex.tl = 1;
             other_lex.sl = end;
-            other_lex.n();
-            let text_node = this._processTextNodeHook_(other_lex, true);
-            if (text_node) this.addC(text_node);
+            let text_node = this.processTextNodeHook(other_lex.n, true);
+            if (text_node) this.addChild(text_node);
         } else if (start < lex.off) {
             let other_lex = lex.copy();
             other_lex.off = start;
@@ -328,14 +324,16 @@ class HTMLNode {
             other_lex.tl = 0;
             other_lex.fence(lex);
             other_lex.IWS = false;
-            other_lex.n();
+            other_lex.n;
             other_lex.IWS = true;
 
-            if ((other_lex.sl - other_lex.off) < 2)
-                debugger;
+            if ((other_lex.sl - other_lex.off) < 2){
+                //TODO
+                throw new Error("Unexpected end of input");
+            }
 
-            let text_node = this._processTextNodeHook_(other_lex, false);
-            if (text_node) this.addC(text_node);
+            let text_node = this.processTextNodeHook(other_lex, false);
+            if (text_node) this.addChild(text_node);
         }
     }
 
@@ -347,23 +345,24 @@ class HTMLNode {
      * @param {Object} attribs - An object which will receive the attribute keys and values. 
      * @private
      */
-    _parseOpenTag_(lex, DTD, old_wurl) {
+    parseOpenTag(lex, DTD, old_url) {
         let HAS_URL = false;
 
         while (!lex.END && lex.text !== ">" && lex.text !== "/") {
 
+
             if (DTD && lex.ch == "-" && lex.pk.ch == "-") {
-                //_parse_ comment
+                //parse comment
 
                 let pk = lex.pk;
                 if (!lex.text) throw Error("Unexpected end of input.");
-                let a = pk.n().ch,
-                    b = pk.n().ch;
+                let a = pk.n.ch,
+                    b = pk.n.ch;
                 while (!pk.END && (b !== "-" || a !== "-")) {
                     a = b;
-                    b = pk.n().tx;
+                    b = pk.n.tx;
                 }
-                lex.sync().n();
+                lex.sync().n;
                 continue;
             }
 
@@ -371,9 +370,9 @@ class HTMLNode {
             
             let pk = lex.pk;
             
-            while (!pk.END && !(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== "=" && pk.ch !== ">") { pk.n(); }
+            while (!pk.END && !(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== "=" && pk.ch !== ">") { pk.n; }
             
-            let attrib_name = pk.slice(lex);
+            let attrib_name = pk.slice(lex).trim();
             
             lex.sync(); 
             
@@ -389,11 +388,11 @@ class HTMLNode {
                 let start = pk.off;
 
                 pk.IWS = true;
-                while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n(); }
+                while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n; }
                 pk.IWS = false;
 
                 if (pk.off > start) {
-                    out_lex = lex.n().copy();
+                    out_lex = lex.n.copy();
                     out_lex.fence(pk);
                     lex.sync();
                 } else {
@@ -404,9 +403,9 @@ class HTMLNode {
                         lex.throw(`Unexpected end of input. Expecting value for attribute "${attrib_name}"`);
                     else if (lex.type == lex.types.str) {
                         out_lex.tl = 1;
-                        out_lex.n();
+                        out_lex.n;
                         out_lex.sl = lex.pos + lex.tl - 1;
-                        lex.n();
+                        lex.n;
                     } else {
                         lex.next();
                         out_lex.fence(lex);
@@ -415,14 +414,14 @@ class HTMLNode {
             }
 
             if (attrib_name == "url") {
-                this.url = URL.resolveRelative(old_wurl, out_lex.slice());
+                this.url = URL.resolveRelative(old_url, out_lex.slice());
                 HAS_URL = true;
             }
 
-            let attrib = this._processAttributeHook_(attrib_name, out_lex);
+            let attrib = this.processAttributeHook(attrib_name, out_lex);
 
             if (attrib)
-                this._attributes_.push(attrib);
+                this.attributes.push(attrib);
         }
 
         if (lex.text == "/") // Void Nodes
@@ -431,13 +430,12 @@ class HTMLNode {
         return HAS_URL;
     }
 
-    _parseRunner_(lex = null, OPENED = false, IGNORE_TEXT_TILL_CLOSE_TAG = false, parent = null, old_wurl = null) {
+    parseRunner(lex = null, OPENED = false, IGNORE_TEXT_TILL_CLOSE_TAG = false, parent = null, old_url = new URL(0, !!1)) {
         let start = lex.pos;
         let end = lex.pos;
         let HAS_INNER_TEXT = false;
         main_loop:
         while (!lex.END) {
-
             switch (lex.ch) {
                 case "/":
                     if (lex.pk.ch == "<") { //ignore the white space.
@@ -458,27 +456,27 @@ class HTMLNode {
 
                         if (HAS_INNER_TEXT) {
                             if (IGNORE_TEXT_TILL_CLOSE_TAG)
-                                this._createTextNode_(lex, start);
+                                this.createTextNode(lex, start);
                             else if ((end - start) > 0)
-                                this._createTextNode_(lex, start, end);
+                                this.createTextNode(lex, start, end);
                         }
 
                         //Close tag
-                        let name = lex.sync().n().tx;
+                        let name = lex.sync().n.tx;
 
                         //Close tag is not the one we are looking for. We'll create a new dummy node and close the tag with it. 
                         if (name !== this.tag) {
                             //Create new node with the open tag 
                             let insert = new HTMLNode();
                             insert.tag = name;
-                            this.addC(insert);
+                            this.addChild(insert);
                         }
 
-                        lex.n();
+                        lex.n;
                         lex.IWS = false;
                         lex.a(">");
 
-                        this._endOfElementHook_(lex, parent);
+                        this.endOfElementHook(lex, parent);
 
                         return this;
                     }
@@ -486,7 +484,7 @@ class HTMLNode {
                     if (pk.ch == "!") {
                         /* DTD - Doctype and Comment tags*/
                         //This type of tag is dropped
-                        while (!lex.END && lex.n().ch !== ">") {};
+                        while (!lex.END && lex.n.ch !== ">") {};
                         lex.a(">");
                         continue;
                     }
@@ -496,41 +494,41 @@ class HTMLNode {
                         if (!OPENED) {
                             let URL = false;
                             this.DTD = false;
-                            this._attributes_.length = 0;
+                            this.attributes.length = 0;
 
                             //Expect tag name 
-                            this.tag = lex.n().tx.toLowerCase();
+                            this.tag = lex.n.tx.toLowerCase();
 
 
-                            URL = this._parseOpenTag_(lex.n(), false, old_wurl);
+                            URL = this.parseOpenTag(lex.n, false, old_url);
                             start = lex.pos + 1;
                             lex.IWS = false;
-                            if (lex.ch == "/") lex.n();
+                            if (lex.ch == "/") lex.n;
                             lex.a(">");
 
 
                             OPENED = true;
 
-                            HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = this._ignoreTillHook_(this.tag);
+                            HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = this.ignoreTillHook(this.tag);
 
                             if (URL) {
 
                                 //Need to block against ill advised URL fetches. 
 
                                 //Hook to pull in data from remote resource
-                                let prom = this._processFetchHook_(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
+                                let prom = this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
 
                                 if (prom instanceof Promise) {
                                     return prom.then(() => {
-                                        if (this._selfClosingTagHook_(this.tag)) {
+                                        if (this.selfClosingTagHook(this.tag)) {
                                             return this;
                                         } // Tags without matching end tags.
-                                        return this._parseRunner_(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_wurl);
+                                        return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
                                     });
                                 }
                             }
 
-                            if (this._selfClosingTagHook_(this.tag)){
+                            if (this.selfClosingTagHook(this.tag)){
                                  // Tags without matching end tags.
                                 this.single = true;
                                 return this;
@@ -542,21 +540,29 @@ class HTMLNode {
                             //Create text node;
                             if (HAS_INNER_TEXT) {
                                 if (IGNORE_TEXT_TILL_CLOSE_TAG)
-                                    this._createTextNode_(lex, start);
+                                    this.createTextNode(lex, start);
                                 else if ((end - start) > 0) {
-                                    this._createTextNode_(lex, start, end);
+                                    this.createTextNode(lex, start, end);
                                 }
                             }
 
                             //New Child node found
                             let node = this.createHTMLNodeHook(lex.pk.tx, lex.off);
 
-                            this.addC(node);
+                            this.addChild(node);
 
-                            return node._parse_(lex, false, false, this, this.url || old_wurl).then(child => {
-                                if (child.DTD) node.remC(child);
-                                return this._parseRunner_(lex, OPENED, false, this, old_wurl);
-                            });
+                            let prom = node.parseRunner(lex, false, false, this, this.url || old_url);
+                            
+                            if(prom instanceof Promise){
+                                return prom.then(child => {
+                                    if (child.DTD) this.removeChild(child);
+                                    return this.parseRunner(lex, OPENED, false, this, old_url);
+                                });    
+                            }else{
+                                if (node.DTD) this.removeChild(node);
+                                return this.parseRunner(lex, OPENED, false, this, old_url);
+                            }
+                            
                         }
                         //}
                     }
@@ -573,13 +579,12 @@ class HTMLNode {
                 }
             }
 
-            lex.n();
+            lex.n;
         }
 
         if (OPENED && start < lex.off) {
-            //console.log("OPEND TEXT IMPORT", lex.slice(start));
             //Got here from an network import, need produce a text node;
-            this._createTextNode_(lex, start);
+            this.createTextNode(lex, start);
         }
 
         return this;
@@ -593,27 +598,22 @@ class HTMLNode {
      * @return     {Promise}  
      * @private
      */
-    _parse_(lex = null, OPENED = false, IGNORE_TEXT_TILL_CLOSE_TAG = false, parent = null, url = new URL(0, !!1)) {
+    parse(lex, url =  new URL(0, !!1)) {
+        
+        if(typeof(lex) == "string") lex = whind(lex);
+        
         lex.IWS = false;
+        
         return new Promise((res, rej) => {
-            res(this._parseRunner_(lex, OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url));
+            res(this.parseRunner(lex, false, false, null, url));
         });
     }
 
     /******************************************* HOOKS ******************************************************************************************************************/
 
-    /**
-     * Override this to act on the finished node, right before the parse function completes and returns.
-     */
-    _endOfElementHook_() {}
+    endOfElementHook() {}
 
-
-
-    /**
-     * Override this method to tell the parser that `tag` is self closing and to not look for a matching close tag by returning `true`.
-     * @param      {string}  tag     The HTML tag
-     */
-    _selfClosingTagHook_(tag) {
+    selfClosingTagHook(tag) {
         switch (tag) {
             case "input":
             case "br":
@@ -626,50 +626,15 @@ class HTMLNode {
         return false;
     }
 
-
-
-    /**
-     * Override this method to tell the parser to not to parse innerHTML by returning `true`
-     * @param      {string}   tag     The HTML tag
-     * @return     {boolean}  If `true` is returned, parser will not react to any more HTML markup until the closing tag for this node is found.
-     * @public
-     */
-    _ignoreTillHook_(tag) {
+    ignoreTillHook(tag) {
         if (tag == "script" || tag == "style") // Special character escaping tags.
             return true;
         return false;
     }
 
+    createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
 
-
-    /**
-     * Override this method to create a different node type for the given `tag` string.
-     * > If overridden, returned node should support:
-     * > - All properties and methods in {@link ll}
-     * > - All properties and methods in {@link HTMLNode}
-     * @param      {string}    tag     The name of the tag to create. 
-     * @param      {number} start Marks the offset position of the `<` character of the open tag. Can be used to walk the Lexer back and parse the open tag characters again.
-     * @return     {HTMLNode}  returns a new HTMLNode.
-     * @public
-     */
-    
-createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
-
-
-
-    /**
-     * Override this method to process how a url based resource is fetched.
-     * > If overridden:  
-     * > - Should return null or a Promise that resumes html parsing by calling this._parse_(`lexer`, `OPENED`, `IGNORE_TEXT_TILL_CLOSE_TAG`, `parent`).
-     * > - Please make sure a call to `this._parse_` includes `lexer`, `OPENED`, `IGNORE_TEXT_TILL_CLOSE_TAG`, and `parent`.
-     * @param      {Lexer} - A Lexical tokenizing object supporting methods found in {@link Lexer}. It contains the HTML string being _parse_d.
-     * @param      {boolean}  OPENED       Always set to `true`.
-     * @param      {boolean}  IGNORE_TEXT_TILL_CLOSE_TAG  If `true`, parser will ignore all HTML syntax until the closing tag is found. 
-     * @param      {HTMLNode|object}  parent       The parent node.
-     * @return     {boolean | Promise}  If additional processing must be done asynchronously, return a `Promise` which will call this._parse_ when it is resolved.
-     * @public
-     */
-    _processFetchHook_(lexer, OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url) {
+    processFetchHook(lexer, OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url) {
         let path = this.url.path,
             CAN_FETCH = true;
 
@@ -686,34 +651,17 @@ createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
         if (CAN_FETCH) {
             return this.url.fetchText().then((text) => {
                 let lexer = whind(text);
-                return this._parseRunner_(lexer, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, this.url);
+                return this.parseRunner(lexer, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, this.url);
             }).catch((e) => {
-                console.log(e);
+                console.error(e);
             });
         }
         return null;
     }
 
-
-
-    /**
-     * Override this method to _parse_ attribute data. 
-     * @param      {string}  name   The attribute name
-     * @param      {string}  value  The attribute value
-     * @return     {Object}  An attribute object to store in the `this._attributes_` array.
-     * @public
-     */
-    _processAttributeHook_(name, lex) { return { name, value: lex.slice() }; }
-
-
-
-    /**
-     * Override this to process new TextNode data as it is encountered.
-     * @param      {string}  text_node  The text node
-     * @return     {TextNode}  TextNode to add to children list. Return null instead to prevent the node from being entered.
-     * @public
-     */
-    _processTextNodeHook_(lex, IS_INNER_HTML) {
+    processAttributeHook(name, lex) { return { name, value: lex.slice() }; }
+    
+    processTextNodeHook(lex, IS_INNER_HTML) {
         if (!IS_INNER_HTML)
             return new TextNode(lex.slice());
         let txt = "";
@@ -727,8 +675,11 @@ createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
                 txt += lex.tx;
             }
             lex.IWS = false;
-            lex.n();
+            lex.n;
         }
+
+        if(!(lex.ty & (8 | 256)))
+            txt += lex.tx;
 
         if (txt.length > 0) {
             return new TextNode(txt.trim());
@@ -737,26 +688,19 @@ createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
         return null;
     }
 
-
-
-    /**
-     * Constructs a new HTMLElement and appends to the parent element.
-     * Iterates through children nodes, calling their `_build_` method, passing in it's own HTMLElement as the argument for parent. 
-     * @param {HTMLElement}  parent  The parent HTMLElement to append sub elements to.
-     */
-    _build_(parent) {
+    build(parent) {
         let ele = document.createElement(this.tag);
 
-        for (let i = 0, l = this._attributes_.length; i < l; i++) {
-            let attr = this._attributes_[i];
+        for (let i = 0, l = this.attributes.length; i < l; i++) {
+            let attr = this.attributes[i];
             ele.setAttribute(attr.name, attr.value);
         }
         //let passing_element = ele;
         let passing_element = (this.tag == "template") ? ele.content : ele;
 
         for (let node = this.fch; node;
-            (node = this.getN(node))) {
-            node._build_(passing_element);
+            (node = this.getNextChild(node))) {
+            node.build(passing_element);
         }
 
         if (parent) parent.appendChild(ele);
@@ -765,18 +709,7 @@ createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
     }
 }
 
-
-
-/**
- * HTMLNode implements all of ll
- * @extends ll
- * @memberof  module:wick~internals.html.HTMLNode
- * @private
- */
-Object.assign(HTMLNode.prototype, ll.props.defaults, ll.props.children, ll.props.parent, ll.methods.defaults, ll.methods.parent_child);
-ll.setGettersAndSetters(HTMLNode.prototype);
-
-
+ ll.mixinTree(HTMLNode);
 
 
 /**
@@ -788,7 +721,7 @@ ll.setGettersAndSetters(HTMLNode.prototype);
  * @memberof module:wick.core
  * @alias html
  */
-const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root._parse_(whind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"), true, false, null, url)));
+const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root.parse(whind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"), url)));
 
 export { HTMLNode, HTMLParser, TextNode };
 

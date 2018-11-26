@@ -161,7 +161,7 @@ describe('Candlefw HTML tests', function() {
                     </body>
                 </div>
                 `).then((og) => {
-                    let element = og._build_();
+                    let element = og.build();
                     element.tagName.should.equal("DIV");
                     element.firstChild.tagName.should.equal("HEAD");
                     let head = element.firstChild;

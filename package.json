@@ -1,7 +1,7 @@
 {
   "name": "@candlefw/html",
-  "version": "0.0.1",
-  "description": "HTML Parser",
+  "version": "0.0.2",
+  "description": "HTML Parser / Virtual Dom",
   "main": "source/html.mjs",
   "scripts": {
     "test": "mocha test/test.js -r esm",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/galactrax/cfw_html.git"
+    "url": "git+https://github.com/galactrax/cfw-html.git"
   },
   "keywords": [
     "HTML",
@@ -20,13 +20,13 @@
   "author": "Anthony Weathersby",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/galactrax/cfw_html/issues"
+    "url": "https://github.com/galactrax/cfw-html/issues"
   },
-  "homepage": "https://github.com/galactrax/cfw_html#readme",
+  "homepage": "https://github.com/galactrax/cfw-html#readme",
   "dependencies": {
-    "@candlefw/ll": ">=0.0.1",
-    "@candlefw/url": ">=0.0.1",
-    "@candlefw/whind": "^0.1.1"
+    "@candlefw/ll": "^0.1.1",
+    "@candlefw/url": "0.0.2",
+    "@candlefw/whind": "^0.2.3"
   },
   "devDependencies": {
     "chai": "^4.2.0",
