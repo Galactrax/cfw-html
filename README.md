@@ -138,24 +138,27 @@ mixin [@candlefw/ll - tree](https://github.com/galactrax/cfw-ll#README)
 
 
 - *Promise* or *null* - ***processFetchHook*** ( **lexer** , **OPENED** , **IGNORE_TEXT_TILL_CLOSE_TAG** , **parent** , **url** ) <br>&ensp; Override this method to process how a url based resource is fetched.
-     > If overridden:  
-     > - This function should return either **null** or a **Promise**. If a **Promise** is returned, the parser will wait until the promise is resolved. This enables external content to be fetched and parsed.
-		 > - If you want to continue processing the returned data with the HTMLNode parse mechanism, call `this.parseRunner`, and pass the string value of the fetched data wrapped in a [Whind Lexer](https://github.com/galactrax/cfw-whind), **OPENED** , **IGNORE_TEXT_TILL_CLOSE_TAG**, **parent**, and **url** to the function. Passing these values will preserve the state of the parser.
-		 >
-		 > e.g:
-		 > ```javascript
-		 > import whind from "@candlefw/whind"
-		 > /*...
-		 > 	...
-		 >     ...*/
-		 > DerivedNode.prototype.processFetchHook = function(lexer, OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url){
-		 >  	return fetch(url)
-		 	.then(res => {res.text()
-				.then(txt => this.parsesRunner(whind(txt), OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url))
-			})
-		 > }
-		 > ```
-		 > **Warning**: It is up to the implementer to follow best practices when dealing with external data with regard to client and server safety. Additional issues can occur if URL recursion is not taken into account, which can lead to an infinite fetching loop within the parser! Check that the URL has not already been fetched by an ancestor HTMLNode before attempting to fetch a resource.
+     	
+	> If overridden:  
+	>
+	> - This function should return either **null** or a **Promise**. If a **Promise** is returned, the parser will wait until the promise is resolved. This enables external content to be fetched and parsed.
+	>	
+	> - If you want to continue processing the returned data with the HTMLNode parse mechanism, call `this.parseRunner`, and pass the string value of the fetched data wrapped in a [Whind Lexer](https://github.com/galactrax/cfw-whind), **OPENED** , **IGNORE_TEXT_TILL_CLOSE_TAG**, **parent**, and **url** to the function. Passing these values will preserve the state of the parser.
+	>
+	> e.g:
+	> ```javascript
+	> import whind from "@candlefw/whind"
+	> /*...
+	>   ...
+	>   ...*/
+	> DerivedNode.prototype.processFetchHook = function(lexer, OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url){
+	>  	return fetch(url)
+	> 	.then(res => {res.text()
+	>		.then(txt => this.parsesRunner(whind(txt), OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url))
+	>	})
+	> }
+	> ```
+	> **Warning**: It is up to the implementer to follow best practices when dealing with external data with regard to client and server safety. Additional issues can occur if URL recursion is not taken into account, which can lead to an infinite fetching loop within the parser! Check that the URL has not already been fetched by an ancestor HTMLNode before attempting to fetch a resource.
 
 
 - *TextNode* - ***processTextNodeHook*** ( **lex** , **IS_INNER_HTML** ) <br>&ensp; Override this to process inner HTML text before creating and returning a TextNode. If **null** is returned, then the text data will be omitted from the resulting HTMLNode tree.
