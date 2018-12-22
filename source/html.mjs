@@ -94,11 +94,7 @@ class HTMLNode {
 
     }
 
-
-
     /******************************************* ATTRIBUTE AND ELEMENT ACCESS ******************************************************************************************************************/
-
-
 
     /**
      * Returns the type of `0` (`HTML`)
@@ -279,7 +275,9 @@ class HTMLNode {
 
         while (++i < l) {
             let attr = atr[i];
-            str += ` ${attr.name}="${attr.value}"`;
+           
+            if(attr.name) 
+                str += ` ${attr.name}="${attr.value}"`;
         }
 
         str += ">\n";
@@ -663,9 +661,9 @@ class HTMLNode {
     
     processTextNodeHook(lex, IS_INNER_HTML) {
         if (!IS_INNER_HTML)
-            return new TextNode(lex.slice());
+            return new TextNode(lex.trim().slice());
         let txt = "";
-
+        /*
         lex.IWS = true;
 
         while (!lex.END) {
@@ -680,10 +678,15 @@ class HTMLNode {
 
         if(!(lex.ty & (8 | 256)))
             txt += lex.tx;
-
-        if (txt.length > 0) {
-            return new TextNode(txt.trim());
-        }
+        */
+        //if (txt.length > 0) {
+            
+            let t = lex.trim();
+             debugger   
+            if(t.string_length > 0)
+                return new TextNode(t.slice());
+            
+        //}
 
         return null;
     }

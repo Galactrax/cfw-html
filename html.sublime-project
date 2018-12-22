@@ -2,12 +2,7 @@
 	"folders":
 	[
 		{
-			"path": ".",
-			"folder_exclude_patterns" : [".git", "node_modules", "docs"],
+			"path": "."
 		}
-	],
-	"settings":
-	{
-		"tab_size" : 4
-	},
+	]
 }

@@ -1,10 +1,9 @@
-import html from "../source/html.mjs"
+import html from "../source/html.mjs";
 
-const chai = require("chai")
+const chai = require("chai");
 
 chai.should();
 
-//const html = require("./build/html-cjs.js").default;
 const path = require("path");
 const fs = require("fs");
 
@@ -27,11 +26,11 @@ describe('Candlefw HTML tests', function() {
                                 text: () => {
                                     return {
                                         then: (f) => f(data)
-                                    }
+                                    };
                                 }
                             });
                         }
-                    })
+                    });
                 });
 
             let JSDOM = require("jsdom").JSDOM;
@@ -138,7 +137,7 @@ describe('Candlefw HTML tests', function() {
                     </body>
                 </html>
                 `).then((og) => {
-                    og.toString().should.equal(`<html type="truetype">\n    <head screen="true">\n        <style>\n             \n                            a{color:red}\n                        \n        </style>\n    </head>\n    <script>\n          sthis \n    </script>\n    <body>\n         thisis some of my text\n        <app>\n             sdfsaf\n            <template>\n                 this is my inner template.\n            </template>\n        </app>\n    </body>\n</html>\n`);
+                    og.toString().should.equal(`<html type="truetype">\n    <head screen="true">\n        <style>\n             a{color:red}\n        </style>\n    </head>\n    <script>\n         sthis\n    </script>\n    <body>\n         thisis some of my text\n        <app>\n             sdfsaf\n            <template>\n                 this is my inner template.\n            </template>\n        </app>\n    </body>\n</html>\n`);
                 })
             );
 
@@ -183,7 +182,7 @@ describe('Candlefw HTML tests', function() {
     <head>
         <link>
             <body>
-                                     
+                 
             </body>
         </link>
     </head>
