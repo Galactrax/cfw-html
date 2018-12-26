@@ -2208,6 +2208,8 @@ var html = (function (exports) {
          * @public
          */
         toString(off = 0) {
+            
+            debugger
             let o = offset.repeat(off);
 
             let str = `${o}<${this.tag}`,
