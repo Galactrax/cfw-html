@@ -698,6 +698,19 @@ class HTMLNode {
         return null;
     }
 
+    /**
+        Deep Clone of Element
+    */
+    clone(){
+        const clone = new this.constructor();
+
+        clone.tag = this.tag;
+
+        clone.parse(this.toString());
+
+        return clone;
+    }
+
     build(parent) {
         let ele = document.createElement(this.tag);
 
