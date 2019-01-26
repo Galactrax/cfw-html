@@ -569,6 +569,9 @@ class HTMLNode {
 
                             let prom = node.parseRunner(lex, false, false, this, this.url || old_url);
                             
+                            if(!this.url)
+                                this.url = old_url;
+                            
                             if(prom instanceof Promise){
                                 return prom.then(child => {
                                     if (child.DTD) this.removeChild(child);
@@ -580,6 +583,8 @@ class HTMLNode {
                             }
                             
                         }
+
+
                         //}
                     }
                     lex.IWS = false;
