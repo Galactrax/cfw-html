@@ -2112,7 +2112,7 @@ class HTMLNode {
     getAttrib(prop) {
         for (let i = -1, l = this.attributes.length; ++i < l;) {
             let attrib = this.attributes[i];
-            if (attrib.name == prop) return attrib;
+            if (attrib.name == prop && !attrib.IGNORE) return attrib;
         }
         return null;
     }
@@ -2209,8 +2209,7 @@ class HTMLNode {
      * @public
      */
     toString(off = 0) {
-        
-        debugger
+
         let o = offset.repeat(off);
 
         let str = `${o}<${this.tag}`,
@@ -2230,12 +2229,18 @@ class HTMLNode {
         if(this.single)
             return str;
 
-        for (let node = this.fch; node;
-            (node = this.getNextChild(node))) {
-            str += node.toString(off+1);
-        }
+        str += this.innerToString(off+1);
 
         return str + `${o}</${this.tag}>\n`;
+    }
+
+    innerToString(off){
+        let str = "";
+        for (let node = this.fch; node;
+            (node = this.getNextChild(node))) {
+            str += node.toString(off);
+        }
+        return str;
     }
 
 
@@ -2602,7 +2607,7 @@ class HTMLNode {
         return null;
     }
 
-    processAttributeHook(name, lex) { return { name, value: lex.slice() }; }
+    processAttributeHook(name, lex) { return {IGNORE:false, name, value: lex.slice() }; }
     
     processTextNodeHook(lex, IS_INNER_HTML) {
         if (!IS_INNER_HTML)
@@ -2634,6 +2639,19 @@ class HTMLNode {
         //}
 
         return null;
+    }
+
+    /**
+        Deep Clone of Element
+    */
+    clone(){
+        const clone = new this.constructor();
+
+        clone.tag = this.tag;
+
+        clone.parse(this.toString());
+
+        return clone;
     }
 
     build(parent) {

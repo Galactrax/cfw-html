@@ -92,6 +92,12 @@ class HTMLNode {
          */
         this.single = false;
 
+
+        //Charactar positional information from input.
+        this.line=0;
+        this.char=0;
+        this.offset=0;
+
     }
 
     /******************************************* ATTRIBUTE AND ELEMENT ACCESS ******************************************************************************************************************/
@@ -506,6 +512,11 @@ class HTMLNode {
 
 
                             URL = this.parseOpenTag(lex.n, false, old_url);
+                            
+                            this.char = lex.char;
+                            this.offset = lex.off;
+                            this.line = lex.line;
+                            
                             start = lex.pos + 1;
                             lex.IWS = false;
                             if (lex.ch == "/") lex.n;
@@ -588,7 +599,7 @@ class HTMLNode {
         }
 
         if (OPENED && start < lex.off) {
-            //Got here from an network import, need produce a text node;
+            //Got here from a network import, need produce a text node;
             this.createTextNode(lex, start);
         }
 
