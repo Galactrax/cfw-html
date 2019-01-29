@@ -452,21 +452,22 @@ var html = (function (exports) {
             white_space_new_line,
         },
 
-    /*** MASKS ***/
+        /*** MASKS ***/
 
-    TYPE_MASK = 0xF,
-    PARSE_STRING_MASK = 0x10,
-    IGNORE_WHITESPACE_MASK = 0x20,
-    TOKEN_LENGTH_MASK = 0xFFFFFFC0,
+        TYPE_MASK = 0xF,
+        PARSE_STRING_MASK = 0x10,
+        IGNORE_WHITESPACE_MASK = 0x20,
+        CHARACTERS_ONLY_MASK = 0x40,
+        TOKEN_LENGTH_MASK = 0xFFFFFF80,
 
-    //De Bruijn Sequence for finding index of right most bit set.
-    //http://supertech.csail.mit.edu/papers/debruijn.pdf
-    debruijnLUT = [ 
-        0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8, 
-        31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
-    ];
+        //De Bruijn Sequence for finding index of right most bit set.
+        //http://supertech.csail.mit.edu/papers/debruijn.pdf
+        debruijnLUT = [
+            0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
+            31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
+        ];
 
-    function getNumbrOfTrailingZeroBitsFromPowerOf2(value){
+    function getNumbrOfTrailingZeroBitsFromPowerOf2(value) {
         return debruijnLUT[(value * 0x077CB531) >>> 27];
     }
 
@@ -474,7 +475,7 @@ var html = (function (exports) {
 
         constructor(string = "", INCLUDE_WHITE_SPACE_TOKENS = false, PEEKING = false) {
 
-            if (typeof(string) !== "string") throw new Error("String value must be passed to Lexer");
+            if (typeof(string) !== "string") throw new Error(`String value must be passed to Lexer. A ${typeof(string)} was passed as the \`string\` argument.`);
 
             /**
              * The string that the Lexer tokenizes.
@@ -523,7 +524,7 @@ var html = (function (exports) {
             /**
              * Flag to force the lexer to parse string contents
              */
-             this.PARSE_STRING = false;
+            this.PARSE_STRING = false;
 
             if (!PEEKING) this.next();
         }
@@ -543,7 +544,7 @@ var html = (function (exports) {
          * Copies the Lexer.
          * @return     {Lexer}  Returns a new Lexer instance with the same property values.
          */
-        copy( destination = new Lexer(this.str, false, true) ) {
+        copy(destination = new Lexer(this.str, false, true)) {
             destination.off = this.off;
             destination.char = this.char;
             destination.line = this.line;
@@ -572,27 +573,49 @@ var html = (function (exports) {
         }
 
         /**
+        Creates and error message with a diagrame illustrating the location of the error. 
+        */
+        errorMessage(message = ""){
+            const arrow = String.fromCharCode(0x2b89),
+                trs = String.fromCharCode(0x2500),
+                line = String.fromCharCode(0x2500),
+                thick_line = String.fromCharCode(0x2501),
+                line_number = "    " + this.line + ": ",
+                line_fill = line_number.length,
+                t$$1 = thick_line.repeat(line_fill + 48),
+                is_iws = (!this.IWS) ? "\n The Lexer produced whitespace tokens" : "";
+            const pk = this.copy();
+            pk.IWS = false;
+            while (!pk.END && pk.ty !== Types.nl) { pk.next(); }
+            const end = pk.off;
+
+            return `${message} at ${this.line}:${this.char}
+${t$$1}
+${line_number+this.str.slice(Math.max(this.off - this.char, 0), end)}
+${line.repeat(this.char-1+line_fill)+trs+arrow}
+${t$$1}
+${is_iws}`;
+        }
+
+        /**
          * Will throw a new Error, appending the parsed string line and position information to the the error message passed into the function.
          * @instance
          * @public
          * @param {String} message - The error message.
+         * @param {Bool} DEFER - if true, returns an Error object instead of throwing.
          */
-        throw (message) {
-            let t$$1 = ("________________________________________________"),
-                n$$1 = "\n",
-                is_iws = (!this.IWS) ? "\n The Lexer produced whitespace tokens" : "";
-            this.IWS = false;
-            let pk = this.copy();
-            while (!pk.END && pk.ty !== Types.nl) { pk.next(); }
-            let end = pk.off;
-            throw new Error(`${message} at ${this.line}:${this.char}\n${t$$1}\n${this.str.slice(this.off + this.tl + 1 - this.char, end)}\n${("").padStart(this.char - 2)}^\n${t$$1}\n${is_iws}`);
+        throw (message, DEFER = false) {
+            const error = new Error(this.errorMessage(message));
+            if(DEFER)
+                return error;
+            throw error;
         }
 
         /**
          * Proxy for Lexer.prototype.reset
          * @public
          */
-        r() { return this.reset(); }
+        r() { return this.reset() }
 
         /**
          * Restore the Lexer back to it's initial state.
@@ -625,24 +648,26 @@ var html = (function (exports) {
          */
         next(marker = this) {
 
-            let str = marker.str;
-
             if (marker.sl < 1) {
                 marker.off = 0;
                 marker.type = 32768;
                 marker.tl = 0;
+                marker.line = 0;
+                marker.char = 0;
                 return marker;
             }
 
             //Token builder
-            let length = marker.tl;
-            let off = marker.off + length;
-            let l$$1 = marker.sl;
-            let IWS = marker.IWS;
-            let type = symbol;
-            let char = marker.char + length;
-            let line = marker.line;
-            let base = off;
+            const l$$1 = marker.sl,
+                str = marker.str,
+                IWS = marker.IWS;
+
+            let length = marker.tl,
+                off = marker.off + length,
+                type = symbol,
+                char = marker.char + length,
+                line = marker.line,
+                base = off;
 
             if (off >= l$$1) {
                 length = 0;
@@ -656,19 +681,19 @@ var html = (function (exports) {
                 return marker;
             }
 
-            while (true) {
+            for (;;) {
 
                 base = off;
 
                 length = 1;
 
-                let code = str.charCodeAt(off);
+                const code = str.charCodeAt(off);
 
                 if (code < 128) {
 
                     switch (jump_table[code]) {
                         case 0: //NUMBER
-                            while (++off < l$$1 && (12 & number_and_identifier_table[str.charCodeAt(off)])) {}
+                            while (++off < l$$1 && (12 & number_and_identifier_table[str.charCodeAt(off)])) ;
 
                             if (str[off] == "e" || str[off] == "E") {
                                 off++;
@@ -685,7 +710,7 @@ var html = (function (exports) {
 
                             break;
                         case 1: //IDENTIFIER
-                            while (++off < l$$1 && ((10 & number_and_identifier_table[str.charCodeAt(off)]))) {}
+                            while (++off < l$$1 && ((10 & number_and_identifier_table[str.charCodeAt(off)]))) ;
                             type = identifier;
                             length = off - base;
                             break;
@@ -693,23 +718,24 @@ var html = (function (exports) {
                             if (this.PARSE_STRING) {
                                 type = symbol;
                             } else {
-                                while (++off < l$$1 && str.charCodeAt(off) !== code) {}
+                                while (++off < l$$1 && str.charCodeAt(off) !== code) ;
                                 type = string;
                                 length = off - base + 1;
                             }
                             break;
                         case 3: //SPACE SET
-                            while (++off < l$$1 && str.charCodeAt(off) === SPACE) {}
+                            while (++off < l$$1 && str.charCodeAt(off) === SPACE) ;
                             type = white_space;
                             length = off - base;
                             break;
                         case 4: //TAB SET
-                            while (++off < l$$1 && str[off] === HORIZONTAL_TAB) {}
+                            while (++off < l$$1 && str[off] === HORIZONTAL_TAB) ;
                             type = white_space;
                             length = off - base;
                             break;
                         case 5: //CARIAGE RETURN
                             length = 2;
+                            //Intentional
                         case 6: //LINEFEED
                             type = new_line;
                             char = 0;
@@ -721,7 +747,6 @@ var html = (function (exports) {
                             break;
                         case 8: //OPERATOR
                             type = operator;
-
                             break;
                         case 9: //OPEN BRACKET
                             type = open_bracket;
@@ -742,8 +767,10 @@ var html = (function (exports) {
                         type = symbol;
                         continue;
                     } else {
+                        //Trim white space from end of string
+                        base = l$$1 - length;
+                        marker.sl -= length;
                         length = 0;
-                        base = l$$1;
                         char -= base - off;
                     }
                 }
@@ -753,13 +780,13 @@ var html = (function (exports) {
 
             marker.type = type;
             marker.off = base;
-            marker.tl = length;
+            marker.tl = (this.masked_values & CHARACTERS_ONLY_MASK) ? Math.min(1, length) : length;
             marker.char = char;
             marker.line = line;
 
             return marker;
         }
-        
+
 
         /**
          * Proxy for Lexer.prototype.assert
@@ -791,7 +818,7 @@ var html = (function (exports) {
          * Proxy for Lexer.prototype.assertCharacter
          * @public
          */
-        aC(char) { return this.assertCharacter(char); }
+        aC(char) { return this.assertCharacter(char) }
         /**
          * Compares the character value of the current token to the value passed in. Advances to next token if the two are equal.
          * @public
@@ -800,9 +827,9 @@ var html = (function (exports) {
          */
         assertCharacter(char) {
 
-            if (this.off < 0) this.throw(`Expecting ${text} got null`);
+            if (this.off < 0) this.throw(`Expecting ${char[0]} got null`);
 
-            if (this.tx[this.off] == char[0])
+            if (this.ch == char[0])
                 this.next();
             else
                 this.throw(`Expecting "${char[0]}" got "${this.tx[this.off]}"`);
@@ -842,7 +869,7 @@ var html = (function (exports) {
          * Proxy for Lexer.prototype.slice
          * @public
          */
-        s(start) { return this.slice(start); }
+        s(start) { return this.slice(start) }
 
         /**
          * Returns a slice of the parsed string beginning at `start` and ending at the current token.
@@ -850,13 +877,11 @@ var html = (function (exports) {
          * @return {String} A substring of the parsed string.
          * @public
          */
-        slice(start) {
+        slice(start = this.off) {
 
-            if (typeof start === "number" || typeof start === "object") {
-                if (start instanceof Lexer) start = start.off;
-                return (this.END) ? this.str.slice(start, this.sl) : this.str.slice(start, this.off);
-            }
-            return this.str.slice(this.off, this.sl);
+            if (start instanceof Lexer) start = start.off;
+
+            return this.str.slice(start, (this.off <= start) ? this.sl : this.off);
         }
 
         /**
@@ -868,14 +893,14 @@ var html = (function (exports) {
 
             if (!(marker instanceof Lexer)) return marker;
 
-            if (marker.tx == "/") {
-                if (marker.pk.tx == "*") {
+            if (marker.ch == "/") {
+                if (marker.pk.ch == "*") {
                     marker.sync();
-                    while (!marker.END && (marker.nexts().tx != "*" || marker.pk.tx != "/")) { /* NO OP */ }
+                    while (!marker.END && (marker.next().ch != "*" || marker.pk.ch != "/")) { /* NO OP */ }
                     marker.sync().assert("/");
-                } else if (marker.pk.tx == "/") {
-                    let IWS = marker.IWS;
-                    while (marker.next().ty != types.new_line && !marker.END) { /* NO OP */ }
+                } else if (marker.pk.ch == "/") {
+                    const IWS = marker.IWS;
+                    while (marker.next().ty != Types.new_line && !marker.END) { /* NO OP */ }
                     marker.IWS = IWS;
                     marker.next();
                 } else
@@ -885,21 +910,56 @@ var html = (function (exports) {
             return marker;
         }
 
-
         setString(string, RESET = true) {
             this.str = string;
             this.sl = string.length;
             if (RESET) this.resetHead();
         }
 
-        toString(){
+        toString() {
             return this.slice();
+        }
+
+        /**
+         * Returns new Whind Lexer that has leading and trailing whitespace characters removed from input. 
+         */
+        trim() {
+            const lex = this.copy();
+
+            for (; lex.off < lex.sl; lex.off++) {
+                const c$$1 = jump_table[lex.string.charCodeAt(lex.off)];
+
+                if (c$$1 > 2 && c$$1 < 7)
+                    continue;
+
+                break;
+            }
+
+            for (; lex.sl > lex.off; lex.sl--) {
+                const c$$1 = jump_table[lex.string.charCodeAt(lex.sl - 1)];
+
+                if (c$$1 > 2 && c$$1 < 7)
+                    continue;
+
+                break;
+            }
+
+            lex.token_length = 0;
+            lex.next();
+
+            return lex;
         }
 
         /*** Getters and Setters ***/
         get string() {
             return this.str;
         }
+
+        get string_length() {
+            return this.sl - this.off;
+        }
+
+        set string_length(s$$1) {}
 
         /**
          * The current token in the form of a new Lexer with the current state.
@@ -923,8 +983,8 @@ var html = (function (exports) {
          * @type {String}
          * @readonly
          */
-        get tx() { return this.text; }
-        
+        get tx() { return this.text }
+
         /**
          * The string value of the current token.
          * @type {String}
@@ -941,7 +1001,7 @@ var html = (function (exports) {
          * @public
          * @readonly
          */
-        get ty() { return this.type; }
+        get ty() { return this.type }
 
         /**
          * The current token's offset position from the start of the string.
@@ -959,61 +1019,73 @@ var html = (function (exports) {
          * @readonly
          * @type {Lexer}
          */
-        get pk() { return this.peek(); }
+        get pk() { return this.peek() }
 
         /**
          * Proxy for Lexer.prototype.next
          * @public
          */
-        get n() { return this.next(); }
+        get n() { return this.next() }
 
-        get END(){ return this.off >= this.sl; }
-        set END(v$$1){}
+        get END() { return this.off >= this.sl }
+        set END(v$$1) {}
 
-        get type(){
+        get type() {
             return 1 << (this.masked_values & TYPE_MASK);
         }
 
-        set type(value){
+        set type(value) {
             //assuming power of 2 value.
 
-            this.masked_values = (this.masked_values & ~TYPE_MASK) | ((getNumbrOfTrailingZeroBitsFromPowerOf2(value)) & TYPE_MASK); 
+            this.masked_values = (this.masked_values & ~TYPE_MASK) | ((getNumbrOfTrailingZeroBitsFromPowerOf2(value)) & TYPE_MASK);
         }
 
-        get tl (){
+        get tl() {
             return this.token_length;
         }
 
-        set tl(value){
+        set tl(value) {
             this.token_length = value;
         }
 
-        get token_length(){
-            return ((this.masked_values & TOKEN_LENGTH_MASK) >> 6);
+        get token_length() {
+            return ((this.masked_values & TOKEN_LENGTH_MASK) >> 7);
         }
 
-        set token_length(value){
-            this.masked_values = (this.masked_values & ~TOKEN_LENGTH_MASK) | (((value << 6) | 0) & TOKEN_LENGTH_MASK); 
+        set token_length(value) {
+            this.masked_values = (this.masked_values & ~TOKEN_LENGTH_MASK) | (((value << 7) | 0) & TOKEN_LENGTH_MASK);
         }
 
-        get IGNORE_WHITE_SPACE(){
+        get IGNORE_WHITE_SPACE() {
             return this.IWS;
         }
 
-        get IWS(){
+        set IGNORE_WHITE_SPACE(bool) {
+            this.iws = !!bool;
+        }
+
+        get CHARACTERS_ONLY() {
+            return !!(this.masked_values & CHARACTERS_ONLY_MASK);
+        }
+
+        set CHARACTERS_ONLY(boolean) {
+            this.masked_values = (this.masked_values & ~CHARACTERS_ONLY_MASK) | ((boolean | 0) << 6);
+        }
+
+        get IWS() {
             return !!(this.masked_values & IGNORE_WHITESPACE_MASK);
         }
 
-        set IWS(boolean){
-            this.masked_values = (this.masked_values & ~IGNORE_WHITESPACE_MASK) | ((boolean | 0) << 5); 
+        set IWS(boolean) {
+            this.masked_values = (this.masked_values & ~IGNORE_WHITESPACE_MASK) | ((boolean | 0) << 5);
         }
 
-        get PARSE_STRING(){
+        get PARSE_STRING() {
             return !!(this.masked_values & PARSE_STRING_MASK);
         }
 
-        set PARSE_STRING(boolean){
-            this.masked_values = (this.masked_values & ~PARSE_STRING_MASK) | ((boolean | 0) << 4); 
+        set PARSE_STRING(boolean) {
+            this.masked_values = (this.masked_values & ~PARSE_STRING_MASK) | ((boolean | 0) << 4);
         }
 
         /**
@@ -1024,7 +1096,7 @@ var html = (function (exports) {
         }
     }
 
-    function whind(string, INCLUDE_WHITE_SPACE_TOKENS = false) { return new Lexer(string, INCLUDE_WHITE_SPACE_TOKENS); }
+    function whind(string, INCLUDE_WHITE_SPACE_TOKENS = false) { return new Lexer(string, INCLUDE_WHITE_SPACE_TOKENS) }
 
     whind.constructor = Lexer;
 
@@ -1042,6 +1114,34 @@ var html = (function (exports) {
         query :"",
         search:""
     };
+
+    /** Implement Basic Fetch Mechanism for NodeJS **/
+    if(typeof(fetch) == "undefined" && typeof(global) !== "undefined" ){
+
+        
+        import("fs").then(fs=>{
+
+
+         global.fetch = (url, data) =>
+            new Promise((res, rej) => {
+                let p = path.resolve(process.cwd(), (url[0] == ".") ? url + "" : "." + url);
+                fs.readFile(p, "utf8", (err, data) => {
+                    if (err) {
+                        rej(err);
+                    } else {
+                        res({
+                            status: 200,
+                            text: () => {
+                                return {
+                                    then: (f) => f(data)
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    }
 
     function fetchLocalText(URL, m = "same-origin") {
         return new Promise((res, rej) => {
@@ -1671,38 +1771,52 @@ var html = (function (exports) {
 
                 insertBefore: function(node) {
 
-                    if (!this.nxt || !this.prv) {
+                    if (!this.nxt && !this.prv) {
                         this.nxt = this;
                         this.prv = this;
                     }
 
-                    if (node.prv || node.nxt) {
-                        node.prv.nxt = node.nxt;
-                        node.nxt.prv = node.prv;
-                    }
-
-                    node.prv = this.prv;
-                    this.prv.nxt = node;
-                    node.nxt = this;
-                    this.prv = node;
+                    if(node){
+                        if (node.prv)
+                           node.prv.nxt = node.nxt;
+                        
+                        if(node.nxt) 
+                            node.nxt.prv = node.prv;
+                    
+                        node.prv = this.prv;
+                        node.nxt = this;
+                        this.prv.nxt = node;
+                        this.prv = node;
+                    }else{
+                        if (this.prv)
+                            this.prv.nxt = node;
+                        this.prv = node;
+                    } 
                 },
 
                 insertAfter: function(node) {
 
-                    if (!this.nxt || !this.prv) {
+                    if (!this.nxt && !this.prv) {
                         this.nxt = this;
                         this.prv = this;
                     }
 
-                    if (node.prv || node.nxt) {
-                        node.prv.nxt = node.nxt;
-                        node.nxt.prv = node.prv;
-                    }
-
-                    this.nxt.prv = node;
-                    node.nxt = this.nxt;
-                    this.nxt = node;
-                    node.prv = this;
+                    if(node){
+                        if (node.prv)
+                           node.prv.nxt = node.nxt;
+                        
+                        if(node.nxt) 
+                            node.nxt.prv = node.prv;
+                    
+                        node.nxt = this.nxt;
+                        node.prv = this;
+                        this.nxt.prv = node;
+                        this.nxt = node;
+                    }else{
+                        if (this.nxt)
+                            this.nxt.prv = node;
+                        this.nxt = node;
+                    } 
                 }
             },
             /**
@@ -2033,6 +2147,12 @@ var html = (function (exports) {
              * True if the element is a single tag element. 
              */
             this.single = false;
+
+
+            //Charactar positional information from input.
+            this.line=0;
+            this.char=0;
+            this.offset=0;
 
         }
 
@@ -2448,6 +2568,11 @@ var html = (function (exports) {
 
 
                                 URL$$1 = this.parseOpenTag(lex.n, false, old_url);
+                                
+                                this.char = lex.char;
+                                this.offset = lex.off;
+                                this.line = lex.line;
+                                
                                 start = lex.pos + 1;
                                 lex.IWS = false;
                                 if (lex.ch == "/") lex.n;
@@ -2500,6 +2625,9 @@ var html = (function (exports) {
 
                                 let prom = node.parseRunner(lex, false, false, this, this.url || old_url);
                                 
+                                if(!this.url)
+                                    this.url = old_url;
+                                
                                 if(prom instanceof Promise){
                                     return prom.then(child => {
                                         if (child.DTD) this.removeChild(child);
@@ -2511,6 +2639,8 @@ var html = (function (exports) {
                                 }
                                 
                             }
+
+
                             //}
                         }
                         lex.IWS = false;
@@ -2530,7 +2660,7 @@ var html = (function (exports) {
             }
 
             if (OPENED && start < lex.off) {
-                //Got here from an network import, need produce a text node;
+                //Got here from a network import, need produce a text node;
                 this.createTextNode(lex, start);
             }
 
