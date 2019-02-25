@@ -339,12 +339,14 @@ class HTMLNode {
             other_lex.IWS = true;
 
             if ((other_lex.sl - other_lex.off) < 2){
+                //No data
                 //TODO
-                throw new Error("Unexpected end of input");
+                //throw new Error("Unexpected end of input");
+            }else{
+                let text_node = this.processTextNodeHook(other_lex, false);
+                if (text_node) this.addChild(text_node);
             }
 
-            let text_node = this.processTextNodeHook(other_lex, false);
-            if (text_node) this.addChild(text_node);
         }
     }
 
@@ -604,8 +606,10 @@ class HTMLNode {
         }
 
         if (OPENED && start < lex.off) {
-            //Got here from a network import, need produce a text node;
-            this.createTextNode(lex, start);
+            if(lex.off - start > 0){
+                //Got here from a network import, need produce a text node;
+                this.createTextNode(lex, start);
+            }
         }
 
         return this;
@@ -675,6 +679,7 @@ class HTMLNode {
                 return this.parseRunner(lexer, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, this.url);
             }).catch((e) => {
                 console.error(e);
+                return this;
             });
         }
         return null;
