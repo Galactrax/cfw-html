@@ -27,6 +27,10 @@ class TextNode {
         return TEXT;
     }
 
+    set data(e) { this.txt = e }
+
+    get data() { return this.txt }
+
     /**
      * Returns a string representation of the object.
      * @param      {string}  str     Optional string passed down from calling method.
@@ -94,9 +98,9 @@ class HTMLNode {
 
 
         //Charactar positional information from input.
-        this.line=0;
-        this.char=0;
-        this.offset=0;
+        this.line = 0;
+        this.char = 0;
+        this.offset = 0;
 
     }
 
@@ -282,22 +286,22 @@ class HTMLNode {
 
         while (++i < l) {
             let attr = atr[i];
-           
-            if(attr.name) 
+
+            if (attr.name)
                 str += ` ${attr.name}="${attr.value}"`;
         }
 
         str += ">\n";
-        
-        if(this.single)
+
+        if (this.single)
             return str;
 
-        str += this.innerToString(off+1);
+        str += this.innerToString(off + 1);
 
         return str + `${o}</${this.tag}>\n`;
     }
 
-    innerToString(off){
+    innerToString(off) {
         let str = "";
         for (let node = this.fch; node;
             (node = this.getNextChild(node))) {
@@ -768,5 +772,42 @@ class HTMLNode {
 const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root.parse(whind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"), url)));
 
 export { HTMLNode, HTMLParser, TextNode };
+
+HTMLParser.polyfill = function() {
+    URL.polyfill();
+
+    if (typeof(global) !== "undefined") {
+        global.HTMLElement = HTMLNode;
+        global.TextNode = TextNode;
+        global.document = global.document || {}
+
+        Object.assign(global.document, {
+            createElement: function(tag) {
+                let node = new HTMLElement();
+                node.tag = tag.toString().toLowerCase();
+                return node;
+            },
+            createTextNode: function(text) {
+                let node = new TextNode(text);
+                return node;
+            }
+        })
+    }
+    HTMLNode.prototype.appendChild = function(child) {
+        this.addChild(child);
+    }
+
+    HTMLNode.prototype.removeChild = function(child) {
+        this.removeChild(child);
+    }
+
+    HTMLNode.prototype.setAttribute = function(name, value) {
+        let attr = this.getAttrib(name)
+        if (attr)
+            attr.value = value;
+        else
+            this.attributes.push({ name, value });
+    }
+}
 
 export default HTMLParser;
