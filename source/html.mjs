@@ -382,6 +382,7 @@ class HTMLNode {
      */
     parseOpenTag(lex, DTD, old_url) {
         let HAS_URL = false;
+        lex.PARSE_STRING = false; // Want to make sure lex creates string tokens. 
 
         while (!lex.END && lex.text !== ">" && lex.text !== "/") {
 
@@ -459,9 +460,10 @@ class HTMLNode {
                 this.attributes.push(attrib);
         }
 
-        if (lex.text == "/") // Void Nodes
-            lex.assert("/");
+        if (lex.ch == "/") // Void Nodes
+            lex.next();
 
+        lex.PARSE_STRING = true; // Reset lex to ignore string tokens.
         return HAS_URL;
     }
 
@@ -469,16 +471,19 @@ class HTMLNode {
         let start = lex.pos;
         let end = lex.pos;
         let HAS_INNER_TEXT = false;
+
+        // The lexer Should not produce string tokens when parsing HTML tags. If it does, markup such as 
+        //  
+        // <div> The " Market Row <b> Clipers <\b> " </div>
+        // 
+        // Would be incorrectly parsed since the lexer would produce a token {type:"string", tx:" Market Row <b> Clipers <\b> "} 
+        // that would prevent the <b> tag from being detected and parsed.
+
+        lex.PARSE_STRING = true;
+        
         main_loop:
             while (!lex.END) {
                 switch (lex.ch) {
-                    case "/":
-                        if (lex.pk.ch == "<") { //ignore the white space.
-                            lex.sync();
-                            break;
-                        }
-                        break;
-
                     case "<":
                         if (!IGNORE_TEXT_TILL_CLOSE_TAG) lex.IWS = true;
 
@@ -490,10 +495,12 @@ class HTMLNode {
                             }
 
                             if (HAS_INNER_TEXT) {
+                                lex.PARSE_STRING = false;
                                 if (IGNORE_TEXT_TILL_CLOSE_TAG)
                                     await this.createTextNode(lex, start);
                                 else if ((end - start) > 0)
                                     await this.createTextNode(lex, start, end);
+                                lex.PARSE_STRING = true;
                             }
 
                             //Close tag
@@ -511,9 +518,8 @@ class HTMLNode {
                             lex.IWS = false;
                             lex.a(">");
 
-                            this.endOfElementHook(lex, parent);
-
-                            return this;
+                            lex.PARSE_STRING = false;
+                            return this.endOfElementHook(lex, parent);
                         }
 
                         if (pk.ch == "!") {
@@ -535,8 +541,9 @@ class HTMLNode {
                                 //Expect tag name 
                                 this.tag = lex.n.tx.toLowerCase();
 
-
+                                lex.PARSE_STRING = false;
                                 URL = this.parseOpenTag(lex.n, false, old_url);
+                                lex.PARSE_STRING = true;
 
                                 this.char = lex.char;
                                 this.offset = lex.off;
@@ -669,7 +676,7 @@ class HTMLNode {
 
     /******************************************* HOOKS ******************************************************************************************************************/
 
-    endOfElementHook() {}
+    endOfElementHook() { return this; }
 
     selfClosingTagHook(tag) {
         switch (tag) {
@@ -684,7 +691,7 @@ class HTMLNode {
         return false;
     }
 
-    ignoreTillHook(tag) {
+    async ignoreTillHook(tag) {
         if (tag == "script" || tag == "style") // Special character escaping tags.
             return true;
         return false;
@@ -723,31 +730,11 @@ class HTMLNode {
     async processTextNodeHook(lex, IS_INNER_HTML) {
         if (!IS_INNER_HTML)
             return new TextNode(lex.trim(1).slice());
-        let txt = "";
-        /*
-        lex.IWS = true;
-
-        while (!lex.END) {
-            if (lex.ty == 8) {
-                txt += " ";
-            } else if (lex.ty == 256) {} else {
-                txt += lex.tx;
-            }
-            lex.IWS = false;
-            lex.n;
-        }
-
-        if(!(lex.ty & (8 | 256)))
-            txt += lex.tx;
-        */
-        //if (txt.length > 0) {
 
         let t = lex.trim(1);
 
         if (t.string_length > 0)
             return new TextNode(t.slice());
-
-        //}
 
         return null;
     }
@@ -822,6 +809,7 @@ HTMLParser.polyfill = function() {
             }
         })
     }
+
     HTMLNode.prototype.appendChild = function(child) {
         this.addChild(child);
     }
