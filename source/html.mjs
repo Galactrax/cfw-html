@@ -550,50 +550,61 @@ class HTMLNode {
 
                                 OPENED = true;
 
-                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = this.ignoreTillHook(this.tag);
+                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
+
+                                if (HAS_INNER_TEXT)
+                                    start = lex.pos;
 
                                 if (URL) {
 
                                     //Need to block against ill advised URL fetches. 
 
                                     //Hook to pull in data from remote resource
-                                    let prom = this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
+                                    lex.PARSE_STRING = false;
+                                    await this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
+                                    lex.PARSE_STRING = true;
+                                    if (this.selfClosingTagHook(this.tag))
+                                        return this;
+                                    // Tags without matching end tags.
 
-                                    if (prom instanceof Promise) {
-                                        return prom.then(() => {
-                                            if (this.selfClosingTagHook(this.tag)) {
-                                                return this;
-                                            } // Tags without matching end tags.
-                                            return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
-                                        });
-                                    }
+                                    return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
                                 }
 
+                                
                                 if (this.selfClosingTagHook(this.tag)) {
                                     // Tags without matching end tags.
                                     this.single = true;
                                     return this;
                                 }
 
+
                                 continue;
                             } else {
                                 lex.IWS = false;
                                 //Create text node;
                                 if (HAS_INNER_TEXT) {
+                                    lex.PARSE_STRING = false;
                                     if (IGNORE_TEXT_TILL_CLOSE_TAG)
                                         await this.createTextNode(lex, start);
                                     else if ((end - start) > 0) {
                                         await this.createTextNode(lex, start, end);
                                     }
+                                    lex.PARSE_STRING = true;
                                 }
 
                                 //New Child node found
                                 let node = await this.createHTMLNodeHook(lex.pk.tx, lex.off, lex, this);
 
                                 if (node) {
-                                    this.addChild(node);
 
-                                    await node.parseRunner(lex, false, false, this, this.url || old_url);
+                                    node.par = this;
+
+                                    node = await node.parseRunner(lex, false, false, this, this.url || old_url);
+
+                                    node.par = null;
+
+                                    node.parent = this;
+
 
                                     if (!this.url)
                                         this.url = old_url;
