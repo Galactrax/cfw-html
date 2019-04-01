@@ -7,6 +7,22 @@ const HTML = 0;
 const TEXT = 1;
 const offset = "    ";
 
+// Pollyfill of HTMLElement classList
+function classList(this_arg, list) {
+    Object.assign(list, {
+        add: (name) => {
+            let attrib = this_arg.getAttrib("class")
+            if (attrib) {
+                attrib.value += " " + name;
+                list.push(name);
+            } else {
+                this_arg.setAttribute("class", name);
+            }
+        }
+    })
+    return list;
+}
+
 /**
  * A node for text data.
  * @param  {string}  str     The text value of the node.
@@ -120,9 +136,9 @@ class HTMLNode {
 
     get classList() {
         let classes = this.getAttrib("class");
-        if (typeof classes.value == "string")
-            return classes.split(" ");
-        return [];
+        if (classes && typeof(classes.value) === "string")
+            return classList(this, classes.value.split(" "));
+        return classList(this, []);
     }
 
     getAttribute(name) {
