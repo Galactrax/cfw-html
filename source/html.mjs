@@ -519,7 +519,7 @@ class HTMLNode {
                             lex.a(">");
 
                             lex.PARSE_STRING = false;
-                            return this.endOfElementHook(lex, parent);
+                            return await this.endOfElementHook(lex, parent);
                         }
 
                         if (pk.ch == "!") {
