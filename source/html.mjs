@@ -559,8 +559,10 @@ class HTMLNode {
 
                                 HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
 
-                                if (HAS_INNER_TEXT)
+                                if (HAS_INNER_TEXT){
                                     start = lex.pos;
+                                    lex.PARSE_STRING = false
+                                }
 
                                 if (URL) {
 
@@ -795,7 +797,6 @@ HTMLParser.polyfill = function() {
     if (typeof(global) !== "undefined") {
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
-        global.document = global.document || {}
 
         Object.assign(global.document, {
             createElement: function(tag) {
