@@ -1673,6 +1673,16 @@ class URL {
         window.onpopstate();
         URL.G = this;
     }
+    //Returns the last segment of the path
+    get file(){
+        return this.path.split("/").pop();
+    }
+
+
+    //Returns the all but the last segment of the path
+    get dir(){
+        return this.path.split("/").slice(0,-1).join("/") || "/";
+    }
 
     get pathname() {
         return this.path;
@@ -2767,8 +2777,10 @@ class HTMLNode {
 
                                 HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
 
-                                if (HAS_INNER_TEXT)
+                                if (HAS_INNER_TEXT){
                                     start = lex.pos;
+                                    lex.PARSE_STRING = false;
+                                }
 
                                 if (URL$$1) {
 
@@ -3001,7 +3013,6 @@ HTMLParser.polyfill = function() {
     if (typeof(global) !== "undefined") {
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
-        global.document = global.document || {};
 
         Object.assign(global.document, {
             createElement: function(tag) {

@@ -192,10 +192,10 @@ class HTMLNode {
      * @param      {string}  prop    The attribute name to lookup;
      * @public
      */
-    getAttrib(prop) {
+    getAttrib(prop, GET_IGNORED = false) {
         for (let i = -1, l = this.attributes.length; ++i < l;) {
             let attrib = this.attributes[i];
-            if (attrib.name == prop && !attrib.IGNORE) return attrib;
+            if (attrib.name == prop && (!attrib.IGNORE || GET_IGNORED)) return attrib;
         }
         return null;
     }
