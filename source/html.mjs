@@ -150,6 +150,14 @@ class HTMLNode {
         return this.par;
     }
 
+    get firstChild() {
+        return this.fch;
+    }
+
+    get lastChild() {
+        return this.fch ? this.fch.previous : null;
+    }
+
     get previousElementSibling() {
         if (this.par) {
             let guard = this.par.fch;
@@ -423,9 +431,9 @@ class HTMLNode {
 
                 let start = pk.off;
 
-                pk.IWS = true;
-                while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n; }
                 pk.IWS = false;
+                
+                while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n; }
 
                 if (pk.off > start) {
                     out_lex = lex.n.copy();
@@ -464,6 +472,7 @@ class HTMLNode {
             lex.next();
 
         lex.PARSE_STRING = true; // Reset lex to ignore string tokens.
+        
         return HAS_URL;
     }
 
@@ -532,6 +541,7 @@ class HTMLNode {
                         }
 
                         if (!IGNORE_TEXT_TILL_CLOSE_TAG) {
+
                             //Open tag
                             if (!OPENED) {
                                 let URL = false;
@@ -551,41 +561,56 @@ class HTMLNode {
 
                                 start = lex.pos + 1;
                                 lex.IWS = false;
-                                if (lex.ch == "/") lex.n;
+
+                                let SELF_CLOSING = this.selfClosingTagHook(this.tag);
+
+                                if (lex.ch == "/") {
+                                    //This is a tag that should be closed 
+                                    lex.n;
+
+                                    SELF_CLOSING = true;
+
+                                    //This element is self closing and does not have a body.
+                                }else{
+                                    HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
+                                    OPENED = true;
+                                }
+
+                                //End of Open Tag
                                 lex.a(">");
 
 
-                                OPENED = true;
-
-                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
-
                                 if (HAS_INNER_TEXT){
+                                    //Insure that string do not lead to 
+                                    lex.PARSE_STRING = false;
                                     start = lex.pos;
-                                    lex.PARSE_STRING = false
-                                }
+                                }                                
 
                                 if (URL) {
 
-                                    //Need to block against ill advised URL fetches. 
+                                    //Need to block against infinitely recursive URL fetches. 
 
                                     //Hook to pull in data from remote resource
                                     lex.PARSE_STRING = false;
+                                    
                                     await this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
+                                    
                                     lex.PARSE_STRING = true;
+                                    
                                     if (this.selfClosingTagHook(this.tag))
                                         return this;
-                                    // Tags without matching end tags.
 
+                                    // Tags without matching end tags.
                                     return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
                                 }
 
                                 
-                                if (this.selfClosingTagHook(this.tag)) {
+                                if (SELF_CLOSING) {
                                     // Tags without matching end tags.
                                     this.single = true;
+
                                     return this;
                                 }
-
 
                                 continue;
                             } else {
@@ -681,22 +706,12 @@ class HTMLNode {
     endOfElementHook() { return this; }
 
     selfClosingTagHook(tag) {
-        switch (tag) {
-            case "input":
-            case "br":
-            case "img":
-                //svg
-            case "rect":
-                return true;
-        }
-
-        return false;
+        return ["input", "br" ,"img", "rect"].includes(tag);
     }
 
     async ignoreTillHook(tag) {
-        if (tag == "script" || tag == "style") // Special character escaping tags.
-            return true;
-        return false;
+        // Special character escaping tags.
+        return ["script", "style" ,"pre"].includes(tag);
     }
 
     async createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
@@ -763,7 +778,6 @@ class HTMLNode {
         }
         //let passing_element = ele;
         let passing_element = (this.tag == "template") ? ele.content : ele;
-
         for (let node = this.fch; node;
             (node = this.getNextChild(node))) {
             node.build(passing_element);
@@ -797,6 +811,9 @@ HTMLParser.polyfill = function() {
     if (typeof(global) !== "undefined") {
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
+
+        if(!global.document)
+            global.document = {};
 
         Object.assign(global.document, {
             createElement: function(tag) {

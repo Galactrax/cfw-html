@@ -1,5 +1,5 @@
 import html from "../source/html.mjs";
-
+html.polyfill();
 const chai = require("chai");
 
 chai.should();
@@ -124,7 +124,7 @@ describe('Candlefw HTML tests', function() {
         this
     </script>
     <body>
-        This is some of my text in         
+        This is some of my text        
         <app>
             sdfsaf
             <template>
@@ -138,24 +138,26 @@ describe('Candlefw HTML tests', function() {
         );
 
         it("Creates a tree of HTMLElements", () =>
-            html(`<!DOCTYPE html><div type="truetype">
-                    <head screen="true">
-                        <!-- test -->
-                        <style>
-                            a{color:red}
-                        </style>
-                    </head>
-                    <script> sthis </script>
-                    <body class="tree">
-                        thisis some of my text
-                        <app> sdfsaf 
-                            <template>
-                                this is my inner template.
-                            </template>
-                        </app>
-                    </body>
-                </div>
-                `).then((og) => {
+            html(
+`<!DOCTYPE html>
+<div type="truetype">
+    <head screen="true">
+        <!-- test -->
+        <style>
+            a{color:red}
+        </style>
+    </head>
+    <script> sthis </script>
+    <body class="tree">
+        thisis some of my text
+        <app> sdfsaf 
+            <div>
+                this is my inner template.
+            </div>
+        </app>
+    </body>
+</div>`
+                ).then((og) => {
                 let element = og.build();
                 element.tagName.should.equal("DIV");
                 element.firstChild.tagName.should.equal("HEAD");
@@ -174,11 +176,11 @@ describe('Candlefw HTML tests', function() {
                     </html>
                 `).then((tree) => {
                 tree.toString().should.equal(
-                    `<html>
+`<html>
     <head>
         <link>
             <body>
-                 
+                  
             </body>
         </link>
     </head>
@@ -195,14 +197,37 @@ describe('Candlefw HTML tests', function() {
                 dom.getAttribute("bare").should.equal("((test))");
             })
         )
-    
-        it("Avoids parsing of strings within elements. E.G <div> \"<div>\" </div>", () =>
-            html(`<div> "<div>" <a><a/></div>`).then(dom => {
-                dom.tag.should.equal("div");
-                dom.children.length.should.equal(2);
-                dom.children[1].tag.should.equal("a");
-                dom.fch.txt.should.equal(" \"<div>\" ");
+
+        it("Handles wick style attributes in the form of name=\"(( value ))\" and name=((vala)(valb))", () =>
+            html(`<div str="(( value ))" simple=((myvalue.value=value)) bare=((vala)(valb)) grama=phone></div>`).then(dom => {
+                dom.getAttribute("simple").should.equal("((myvalue.value=value))");
+                dom.getAttribute("str").should.equal("(( value ))");
+                dom.getAttribute("bare").should.equal("((vala)(valb))");
+                dom.getAttribute("grama").should.equal("phone");
             })
+        )
+    
+    
+        it("Avoids parsing of strings within elements. E.G <div> \"<div>\" </div>", async () =>{
+
+            await html(`<script> "<miv>" <a><a/></script>`).then(dom => {
+                dom.tag.should.equal("script");
+                dom.children.length.should.equal(1);
+                dom.fch.txt.should.equal(` "<miv>" <a><a/>`);
+            })
+
+            await html(`<pre> "<miv>" <a><a/></pre>`).then(dom => {
+                dom.tag.should.equal("pre");
+                dom.children.length.should.equal(1);
+                dom.fch.txt.should.equal(` "<miv>" <a><a/>`);
+            })
+
+            await html(`<style> "<miv>" <a><a/></style>`).then(dom => {
+                dom.tag.should.equal("style");
+                dom.children.length.should.equal(1);
+                dom.fch.txt.should.equal(` "<miv>" <a><a/>`);
+            })
+        }
         )
     });
 
