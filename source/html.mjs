@@ -468,8 +468,8 @@ class HTMLNode {
                 this.attributes.push(attrib);
         }
 
-        if (lex.ch == "/") // Void Nodes
-            lex.next();
+        //if (lex.ch == "/") // Void Nodes
+        //    lex.next();
 
         lex.PARSE_STRING = true; // Reset lex to ignore string tokens.
         
@@ -550,6 +550,8 @@ class HTMLNode {
 
                                 //Expect tag name 
                                 this.tag = lex.n.tx.toLowerCase();
+                                
+
 
                                 lex.PARSE_STRING = false;
                                 URL = this.parseOpenTag(lex.n, false, old_url);
@@ -566,7 +568,7 @@ class HTMLNode {
 
                                 if (lex.ch == "/") {
                                     //This is a tag that should be closed 
-                                    lex.n;
+                                    lex.next();
 
                                     SELF_CLOSING = true;
 
@@ -609,7 +611,7 @@ class HTMLNode {
                                     // Tags without matching end tags.
                                     this.single = true;
 
-                                    return this;
+                                    return (await this.endOfElementHook(lex, parent)) || this;
                                 }
 
                                 continue;
