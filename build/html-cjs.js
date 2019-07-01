@@ -586,12 +586,16 @@ class Lexer {
         const pk = this.copy();
         pk.IWS = false;
         while (!pk.END && pk.ty !== Types.nl) { pk.next(); }
-        const end = pk.off;
+        const end = (pk.END) ? this.str.length : pk.off ;
 
-        return `${message} at ${this.line}:${this.char}
+    //console.log(`"${this.str.slice(this.off-this.char+((this.line > 0) ? 2 :2), end).split("").map((e,i,s)=>e.charCodeAt(0))}"`)
+    let v$$1 = "", length = 0;
+    v$$1 = this.str.slice(this.off-this.char+((this.line > 0) ? 2 :1), end);
+    length = this.char;
+    return `${message} at ${this.line}:${this.char}
 ${t$$1}
-${line_number+this.str.slice(Math.max(this.off - this.char, 0), end)}
-${line.repeat(this.char-1+line_fill)+trs+arrow}
+${line_number+v$$1}
+${line.repeat(length+line_fill-((this.line > 0) ? 2 :1))+arrow}
 ${t$$1}
 ${is_iws}`;
     }
@@ -664,18 +668,19 @@ ${is_iws}`;
         let length = marker.tl,
             off = marker.off + length,
             type = symbol,
-            char = marker.char + length,
             line = marker.line,
-            base = off;
+            base = off,
+            char = marker.char,
+            root = marker.off;
 
         if (off >= l$$1) {
             length = 0;
             base = l$$1;
-            char -= base - off;
+            //char -= base - off;
+            marker.char = char + (base - marker.off);
             marker.type = type;
             marker.off = base;
-            marker.tl = length;
-            marker.char = char;
+            marker.tl = 0;
             marker.line = line;
             return marker;
         }
@@ -704,12 +709,11 @@ ${is_iws}`;
                 NORMAL_PARSE = false;
                 base = off;
                 length = off2 - off;
-                char += length;
+                //char += length;
             }
         }
 
         if (NORMAL_PARSE) {
-
 
             for (;;) {
 
@@ -765,12 +769,14 @@ ${is_iws}`;
                             break;
                         case 5: //CARIAGE RETURN
                             length = 2;
-                            //Intentional
                         case 6: //LINEFEED
+                            //Intentional
                             type = new_line;
-                            char = 0;
                             line++;
+                            base = off;
+                            root = off;
                             off += length;
+                            char = 0;
                             break;
                         case 7: //SYMBOL
                             type = symbol;
@@ -789,22 +795,22 @@ ${is_iws}`;
                             length = 4; //Stores two UTF16 values and a data link sentinel
                             break;
                     }
+                }else{
+                    break;
                 }
 
                 if (IWS && (type & white_space_new_line)) {
                     if (off < l$$1) {
-                        char += length;
                         type = symbol;
+                        //off += length;
                         continue;
                     } else {
                         //Trim white space from end of string
-                        base = l$$1 - length;
-                        marker.sl -= length;
-                        length = 0;
-                        char -= base - off;
+                        //base = l - off;
+                        //marker.sl -= off;
+                        //length = 0;
                     }
                 }
-
                 break;
             }
         }
@@ -812,9 +818,8 @@ ${is_iws}`;
         marker.type = type;
         marker.off = base;
         marker.tl = (this.masked_values & CHARACTERS_ONLY_MASK) ? Math.min(1, length) : length;
-        marker.char = char;
+        marker.char = char + base - root;
         marker.line = line;
-
         return marker;
     }
 
@@ -2368,6 +2373,14 @@ class HTMLNode {
         return this.par;
     }
 
+    get firstChild() {
+        return this.fch;
+    }
+
+    get lastChild() {
+        return this.fch ? this.fch.previous : null;
+    }
+
     get previousElementSibling() {
         if (this.par) {
             let guard = this.par.fch;
@@ -2410,10 +2423,10 @@ class HTMLNode {
      * @param      {string}  prop    The attribute name to lookup;
      * @public
      */
-    getAttrib(prop) {
+    getAttrib(prop, GET_IGNORED = false) {
         for (let i = -1, l = this.attributes.length; ++i < l;) {
             let attrib = this.attributes[i];
-            if (attrib.name == prop && !attrib.IGNORE) return attrib;
+            if (attrib.name == prop && (!attrib.IGNORE || GET_IGNORED)) return attrib;
         }
         return null;
     }
@@ -2641,9 +2654,9 @@ class HTMLNode {
 
                 let start = pk.off;
 
-                pk.IWS = true;
-                while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n; }
                 pk.IWS = false;
+                
+                while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n; }
 
                 if (pk.off > start) {
                     out_lex = lex.n.copy();
@@ -2682,6 +2695,7 @@ class HTMLNode {
             lex.next();
 
         lex.PARSE_STRING = true; // Reset lex to ignore string tokens.
+        
         return HAS_URL;
     }
 
@@ -2750,6 +2764,7 @@ class HTMLNode {
                         }
 
                         if (!IGNORE_TEXT_TILL_CLOSE_TAG) {
+
                             //Open tag
                             if (!OPENED) {
                                 let URL$$1 = false;
@@ -2769,41 +2784,56 @@ class HTMLNode {
 
                                 start = lex.pos + 1;
                                 lex.IWS = false;
-                                if (lex.ch == "/") lex.n;
+
+                                let SELF_CLOSING = this.selfClosingTagHook(this.tag);
+
+                                if (lex.ch == "/") {
+                                    //This is a tag that should be closed 
+                                    lex.n;
+
+                                    SELF_CLOSING = true;
+
+                                    //This element is self closing and does not have a body.
+                                }else{
+                                    HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
+                                    OPENED = true;
+                                }
+
+                                //End of Open Tag
                                 lex.a(">");
 
 
-                                OPENED = true;
-
-                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
-
                                 if (HAS_INNER_TEXT){
-                                    start = lex.pos;
+                                    //Insure that string do not lead to 
                                     lex.PARSE_STRING = false;
-                                }
+                                    start = lex.pos;
+                                }                                
 
                                 if (URL$$1) {
 
-                                    //Need to block against ill advised URL fetches. 
+                                    //Need to block against infinitely recursive URL fetches. 
 
                                     //Hook to pull in data from remote resource
                                     lex.PARSE_STRING = false;
+                                    
                                     await this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
+                                    
                                     lex.PARSE_STRING = true;
+                                    
                                     if (this.selfClosingTagHook(this.tag))
                                         return this;
-                                    // Tags without matching end tags.
 
+                                    // Tags without matching end tags.
                                     return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
                                 }
 
                                 
-                                if (this.selfClosingTagHook(this.tag)) {
+                                if (SELF_CLOSING) {
                                     // Tags without matching end tags.
                                     this.single = true;
+
                                     return this;
                                 }
-
 
                                 continue;
                             } else {
@@ -2899,22 +2929,12 @@ class HTMLNode {
     endOfElementHook() { return this; }
 
     selfClosingTagHook(tag) {
-        switch (tag) {
-            case "input":
-            case "br":
-            case "img":
-                //svg
-            case "rect":
-                return true;
-        }
-
-        return false;
+        return ["input", "br" ,"img", "rect"].includes(tag);
     }
 
     async ignoreTillHook(tag) {
-        if (tag == "script" || tag == "style") // Special character escaping tags.
-            return true;
-        return false;
+        // Special character escaping tags.
+        return ["script", "style" ,"pre"].includes(tag);
     }
 
     async createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
@@ -2981,7 +3001,6 @@ class HTMLNode {
         }
         //let passing_element = ele;
         let passing_element = (this.tag == "template") ? ele.content : ele;
-
         for (let node = this.fch; node;
             (node = this.getNextChild(node))) {
             node.build(passing_element);
@@ -3013,6 +3032,9 @@ HTMLParser.polyfill = function() {
     if (typeof(global) !== "undefined") {
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
+
+        if(!global.document)
+            global.document = {};
 
         Object.assign(global.document, {
             createElement: function(tag) {

@@ -43,6 +43,10 @@ class TextNode {
         return TEXT;
     }
 
+    get parentElement() {
+        return this.par;
+    }
+
     set data(e) { this.txt = e }
 
     get data() { return this.txt }
@@ -432,7 +436,7 @@ class HTMLNode {
                 let start = pk.off;
 
                 pk.IWS = false;
-                
+
                 while (!(pk.ty & (pk.types.ws | pk.types.str | pk.types.nl)) && pk.ch !== ">") { pk.n; }
 
                 if (pk.off > start) {
@@ -472,7 +476,7 @@ class HTMLNode {
             lex.next();
 
         lex.PARSE_STRING = true; // Reset lex to ignore string tokens.
-        
+
         return HAS_URL;
     }
 
@@ -489,7 +493,7 @@ class HTMLNode {
         // that would prevent the <b> tag from being detected and parsed.
 
         lex.PARSE_STRING = true;
-        
+
         main_loop:
             while (!lex.END) {
                 switch (lex.ch) {
@@ -571,7 +575,7 @@ class HTMLNode {
                                     SELF_CLOSING = true;
 
                                     //This element is self closing and does not have a body.
-                                }else{
+                                } else {
                                     HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
                                     OPENED = true;
                                 }
@@ -580,11 +584,11 @@ class HTMLNode {
                                 lex.a(">");
 
 
-                                if (HAS_INNER_TEXT){
+                                if (HAS_INNER_TEXT) {
                                     //Insure that string do not lead to 
                                     lex.PARSE_STRING = false;
                                     start = lex.pos;
-                                }                                
+                                }
 
                                 if (URL) {
 
@@ -592,11 +596,11 @@ class HTMLNode {
 
                                     //Hook to pull in data from remote resource
                                     lex.PARSE_STRING = false;
-                                    
+
                                     await this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
-                                    
+
                                     lex.PARSE_STRING = true;
-                                    
+
                                     if (this.selfClosingTagHook(this.tag))
                                         return this;
 
@@ -604,7 +608,7 @@ class HTMLNode {
                                     return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
                                 }
 
-                                
+
                                 if (SELF_CLOSING) {
                                     // Tags without matching end tags.
                                     this.single = true;
@@ -706,12 +710,12 @@ class HTMLNode {
     endOfElementHook() { return this; }
 
     selfClosingTagHook(tag) {
-        return ["input", "br" ,"img", "rect"].includes(tag);
+        return ["input", "br", "img", "rect"].includes(tag);
     }
 
     async ignoreTillHook(tag) {
         // Special character escaping tags.
-        return ["script", "style" ,"pre"].includes(tag);
+        return ["script", "style", "pre"].includes(tag);
     }
 
     async createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
@@ -769,6 +773,10 @@ class HTMLNode {
         return clone;
     }
 
+    get parentElement(){
+        return this.par;
+    }
+
     build(parent) {
         let ele = document.createElement(this.tag);
 
@@ -811,8 +819,10 @@ HTMLParser.polyfill = function() {
     if (typeof(global) !== "undefined") {
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
+        global.Text = TextNode;
+        global.document = {};
 
-        if(!global.document)
+        if (!global.document)
             global.document = {};
 
         Object.assign(global.document, {
@@ -828,12 +838,105 @@ HTMLParser.polyfill = function() {
         })
     }
 
-    HTMLNode.prototype.appendChild = function(child) {
-        this.addChild(child);
+
+
+    HTMLNode.prototype.attachShadow = function(mode, blah) {
+
+        if (this.shadow)
+            throw new Error(`InvalidStateError: Cannot attach a shadow DOM to an element that already has a shadow DOM`);
+
+        if ([
+                "article",
+                "aside",
+                "blockquote",
+                "body",
+                "div",
+                "footer",
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+                "h5",
+                "h6",
+                "header",
+                "main",
+                "nav",
+                "p", 
+                "section",
+                "span"
+            ].includes(this.tag)) 
+        {
+            this.shadow = new HTMLNode
+            this.shadow.tag = "SHADOW"
+            this.shadow.parent = this;
+            return this.shadow;
+        } else {
+            throw new Error(`NotSupportedError: Cannot attach a shadow DOM to a ${this.tag || "undefined"} element`);
+        }
+    }
+    /*
+    HTMLNode.prototype.insertBefore = function(newNode, referenceNode) {
+        if (referenceNode.par == this) {
+            referenceNode.insertBefore(newNode);
+        }
+    }
+    */
+
+     HTMLNode.prototype.replaceNode = function(newNode, oldNode) {
+        if(oldNode.par == this){
+            oldNode.insertBefore(newNode);
+            oldNode.parent = null;
+        }
+        return newNode;
     }
 
-    HTMLNode.prototype.removeChild = function(child) {
-        this.removeChild(child);
+    HTMLNode.prototype.hasChildNodes = function() {
+        return !!this.fch;
+    }
+
+
+    HTMLNode.prototype.parentNode = function() {
+        return this.par;
+
+    }
+
+    HTMLNode.prototype.previousSibling = function() {
+        return this.pre;
+    }
+
+    HTMLNode.prototype.nextSibling = function() {
+        return this.nxt;
+    }
+
+    HTMLNode.prototype.childNodes = function() {
+        return new Proxy(this, {
+            get: function(obj, prop) {
+
+                if (!isNaN(prop)) {
+                    return obj.children[prop];
+                }
+
+                if (prop == "length") {
+                    return this.noc;
+                }
+            }
+        })
+    }
+
+
+
+    HTMLNode.prototype.contains = function(otherNode) {
+        let node = otherNode
+        while (node.par) {
+            if (node.par == this)
+                return true
+            node = node.par;
+        }
+        return false;
+    }
+
+    HTMLNode.prototype.appendChild = function(child) {
+        this.addChild(child);
     }
 
     HTMLNode.prototype.setAttribute = function(name, value) {

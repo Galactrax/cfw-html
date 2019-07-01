@@ -6,8 +6,7 @@
   "scripts": {
     "test": "mocha test/test.js -r esm",
     "build": "rollup --config ./build/config/config.js",
-    "build.watch": "rollup --config  ./build/config/config.js --watch",
-    "prepare": "npm run build"
+    "build.watch": "rollup --config  ./build/config/config.js --watch"
   },
   "repository": {
     "type": "git",
