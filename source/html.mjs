@@ -933,6 +933,28 @@ HTMLParser.polyfill = function() {
     }
 
 
+    HTMLNode.prototype.addEventListener = function(event, func){
+        event =  event +"";
+        if(!this.__events__)
+            this.__events__ = new Map();
+
+        if(!this.__events__.has(event))
+            this.__events__.set(event, new Set)
+
+        this.__events__.get(event).add(func);
+    }
+
+    HTMLNode.prototype.removeEventListener = function(event, func){
+        event =  event +"";
+        if(!this.__events__) return;
+        if(this.__events__.has(event))
+            this.__events__.get(event).delete(func);
+    }
+
+    HTMLNode.prototype.runEvent = function(event_name, event_object){
+        if(this.__events__ && this.__events__.has(event_name +""))
+            this.__events__.get(event_name + "").values().forEach(e=>e(event_object));
+    }
 
     HTMLNode.prototype.contains = function(otherNode) {
         let node = otherNode
