@@ -892,6 +892,14 @@ HTMLParser.polyfill = function() {
         return newNode;
     }
 
+     HTMLNode.prototype.replaceChild = function(newNode, oldNode) {
+        if(oldNode.par == this){
+            oldNode.insertBefore(newNode);
+            oldNode.parent = null;
+        }
+        return newNode;
+    }
+
     HTMLNode.prototype.hasChildNodes = function() {
         return !!this.fch;
     }
@@ -899,7 +907,6 @@ HTMLParser.polyfill = function() {
 
     HTMLNode.prototype.parentNode = function() {
         return this.par;
-
     }
 
     HTMLNode.prototype.previousSibling = function() {
