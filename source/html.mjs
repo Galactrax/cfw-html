@@ -941,6 +941,13 @@ HTMLParser.polyfill = function() {
         this.addChild(child);
     }
 
+    HTMLNode.prototype.getAttribute = function(name) {
+        let attr = this.getAttrib(name)
+        if (attr)
+            return attr.value;
+        return null;
+    }
+
     HTMLNode.prototype.setAttribute = function(name, value) {
         let attr = this.getAttrib(name)
         if (attr)
