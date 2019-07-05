@@ -57,7 +57,7 @@ class TextNode {
      * @return     {string}  String representation of the object.
      */
     toString(off = 0) {
-        return `${offset.repeat(off)} ${this.txt}\n`;
+        return `${this.txt}`;
     }
 
     /**
@@ -307,7 +307,7 @@ class HTMLNode {
 
         let o = offset.repeat(off);
 
-        let str = `${o}<${this.tag}`,
+        let str = `\n${o}<${this.tag}`,
             atr = this.attributes,
             i = -1,
             l = atr.length;
@@ -319,7 +319,7 @@ class HTMLNode {
                 str += ` ${attr.name}="${attr.value}"`;
         }
 
-        str += ">\n";
+        str += ">";
 
         if (this.single)
             return str;
@@ -775,6 +775,10 @@ class HTMLNode {
         return clone;
     }
 
+    get innerHTML(){
+        return this.innerToString();
+    }
+
     get parentElement(){
         return this.par;
     }
@@ -796,6 +800,10 @@ class HTMLNode {
         if (parent) parent.appendChild(ele);
 
         return ele;
+    }
+
+    get style() {
+        return this.getStyleObject()
     }
 }
 
@@ -822,8 +830,6 @@ HTMLParser.polyfill = function() {
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
         global.Text = TextNode;
-        global.document = {};
-
         if (!global.document)
             global.document = {};
 
@@ -932,6 +938,9 @@ HTMLParser.polyfill = function() {
         })
     }
 
+    HTMLNode.prototype.getStyleObject = function() {
+        return {};
+    }
 
     HTMLNode.prototype.addEventListener = function(event, func){
         event =  event +"";
@@ -952,8 +961,10 @@ HTMLParser.polyfill = function() {
     }
 
     HTMLNode.prototype.runEvent = function(event_name, event_object){
+
         if(this.__events__ && this.__events__.has(event_name +""))
-            this.__events__.get(event_name + "").values().forEach(e=>e(event_object));
+            for(const funct of this.__events__.get(event_name + "").values())
+                funct(event_object)
     }
 
     HTMLNode.prototype.contains = function(otherNode) {
