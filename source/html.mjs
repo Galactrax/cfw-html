@@ -68,6 +68,10 @@ class TextNode {
         parent.appendChild(document.createTextNode(this.txt));
     }
 
+    set type(e){
+
+    }
+
 }
 
 ll.mixinTree(TextNode);
@@ -78,7 +82,9 @@ ll.mixinTree(TextNode);
  * Handles the parsing of HTML strings.
  */
 class HTMLNode {
+    set type(e){
 
+    }
     constructor() {
 
         /**
@@ -351,7 +357,7 @@ class HTMLNode {
      * @param      {start}  start   The starting point of the data slice
      * @private
      */
-    async createTextNode(lex, start, end) {
+    createTextNode(lex, start, end) {
 
         if (end) {
             const other_lex = lex.copy();
@@ -360,9 +366,9 @@ class HTMLNode {
             other_lex.sl = end;
             other_lex.IWS = false;
             other_lex.next();
-            const text_node = await this.processTextNodeHook(other_lex, true);
+            const text_node = this.processTextNodeHook(other_lex, true);
             if (text_node) this.addChild(text_node);
-        } else if (start < lex.off) {
+        } else if (start <= lex.off) {
             let other_lex = lex.copy();
 
             other_lex.off = start;
@@ -377,7 +383,7 @@ class HTMLNode {
                 //TODO
                 //throw new Error("Unexpected end of input");
             } else {
-                let text_node = await this.processTextNodeHook(other_lex, false);
+                let text_node = this.processTextNodeHook(other_lex, false);
                 if (text_node) this.addChild(text_node);
             }
 
@@ -510,9 +516,9 @@ class HTMLNode {
                             if (HAS_INNER_TEXT) {
                                 lex.PARSE_STRING = false;
                                 if (IGNORE_TEXT_TILL_CLOSE_TAG)
-                                    await this.createTextNode(lex, start);
+                                    this.createTextNode(lex, start);
                                 else if ((end - start) > 0)
-                                    await this.createTextNode(lex, start, end);
+                                    this.createTextNode(lex, start, end);
                                 lex.PARSE_STRING = true;
                             }
 
@@ -625,9 +631,9 @@ class HTMLNode {
                                 if (HAS_INNER_TEXT) {
                                     lex.PARSE_STRING = false;
                                     if (IGNORE_TEXT_TILL_CLOSE_TAG)
-                                        await this.createTextNode(lex, start);
+                                        this.createTextNode(lex, start);
                                     else if ((end - start) > 0) {
-                                        await this.createTextNode(lex, start, end);
+                                        this.createTextNode(lex, start, end);
                                     }
                                     lex.PARSE_STRING = true;
                                 }
@@ -683,7 +689,7 @@ class HTMLNode {
         if (OPENED && start < lex.off) {
             if (lex.off - start > 0) {
                 //Got here from a network import, need produce a text node;
-                await this.createTextNode(lex, start);
+                this.createTextNode(lex, start);
             }
         }
 
@@ -750,7 +756,7 @@ class HTMLNode {
 
     processAttributeHook(name, lex) { return { IGNORE: false, name, value: lex.slice() }; }
 
-    async processTextNodeHook(lex, IS_INNER_HTML) {
+    processTextNodeHook(lex, IS_INNER_HTML) {
         if (!IS_INNER_HTML)
             return new TextNode(lex.trim(1).slice());
 
@@ -777,6 +783,13 @@ class HTMLNode {
 
     get innerHTML(){
         return this.innerToString();
+    }
+
+    set innerHTML(text){
+        this.fch = null
+
+        if(text)
+            this.parseRunner(whind(text + ""), true, true, this.par)
     }
 
     get parentElement(){
