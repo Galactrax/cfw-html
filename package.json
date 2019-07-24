@@ -1,6 +1,6 @@
 {
   "name": "@candlefw/html",
-  "version": "0.0.10-a",
+  "version": "0.0.11-0",
   "description": "HTML Parser / Virtual Dom",
   "main": "source/html.mjs",
   "scripts": {
