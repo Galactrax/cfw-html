@@ -77,7 +77,7 @@ class TextNode {
     }
 
     set innerText(e){
-        
+
     }
 
 }
@@ -808,7 +808,7 @@ class HTMLNode {
         let str = "";
         for (let node = this.fch; node;
             (node = this.getNextChild(node))) {
-            str += node.innerText(off);
+            str += node.innerText;
         }
         return str;
     }
