@@ -819,6 +819,10 @@ class HTMLNode {
         return this.par;
     }
 
+    get parentNode() {
+        return this.par;
+    }
+
     build(parent) {
         let ele = document.createElement(this.tag);
 
@@ -841,6 +845,7 @@ class HTMLNode {
     get style() {
         return this.getStyleObject()
     }
+
 }
 
 ll.mixinTree(HTMLNode);
@@ -943,11 +948,6 @@ HTMLParser.polyfill = function() {
 
     HTMLNode.prototype.hasChildNodes = function() {
         return !!this.fch;
-    }
-
-
-    HTMLNode.prototype.parentNode = function() {
-        return this.par;
     }
 
     HTMLNode.prototype.previousSibling = function() {
