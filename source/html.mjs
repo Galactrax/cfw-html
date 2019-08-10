@@ -68,8 +68,16 @@ class TextNode {
         parent.appendChild(document.createTextNode(this.txt));
     }
 
-    set type(e){
+    set type(e) {
 
+    }
+
+    get innerText(){
+        return this.toString();
+    }
+
+    set innerText(e){
+        
     }
 
 }
@@ -82,7 +90,7 @@ ll.mixinTree(TextNode);
  * Handles the parsing of HTML strings.
  */
 class HTMLNode {
-    set type(e){
+    set type(e) {
 
     }
     constructor() {
@@ -345,7 +353,6 @@ class HTMLNode {
     }
 
 
-
     /******************************************* PARSING ******************************************************************************************************************/
 
 
@@ -560,7 +567,7 @@ class HTMLNode {
 
                                 //Expect tag name 
                                 this.tag = lex.n.tx.toLowerCase();
-                                
+
 
 
                                 lex.PARSE_STRING = false;
@@ -781,18 +788,34 @@ class HTMLNode {
         return clone;
     }
 
-    get innerHTML(){
+    get innerText() {
+        return this.innerToTextString();
+    }
+
+
+    get innerHTML() {
         return this.innerToString();
     }
 
-    set innerHTML(text){
+    set innerHTML(text) {
         this.fch = null
 
-        if(text)
+        if (text)
             this.parseRunner(whind(text + ""), true, true, this.par)
     }
 
-    get parentElement(){
+    get innerText() {
+        let str = "";
+        for (let node = this.fch; node;
+            (node = this.getNextChild(node))) {
+            str += node.innerText(off);
+        }
+        return str;
+    }
+
+    set innerText(e){}
+
+    get parentElement() {
         return this.par;
     }
 
@@ -882,11 +905,10 @@ HTMLParser.polyfill = function() {
                 "header",
                 "main",
                 "nav",
-                "p", 
+                "p",
                 "section",
                 "span"
-            ].includes(this.tag)) 
-        {
+            ].includes(this.tag)) {
             this.shadow = new HTMLNode
             this.shadow.tag = "SHADOW"
             this.shadow.parent = this;
@@ -903,16 +925,16 @@ HTMLParser.polyfill = function() {
     }
     */
 
-     HTMLNode.prototype.replaceNode = function(newNode, oldNode) {
-        if(oldNode.par == this){
+    HTMLNode.prototype.replaceNode = function(newNode, oldNode) {
+        if (oldNode.par == this) {
             oldNode.insertBefore(newNode);
             oldNode.parent = null;
         }
         return newNode;
     }
 
-     HTMLNode.prototype.replaceChild = function(newNode, oldNode) {
-        if(oldNode.par == this){
+    HTMLNode.prototype.replaceChild = function(newNode, oldNode) {
+        if (oldNode.par == this) {
             oldNode.insertBefore(newNode);
             oldNode.parent = null;
         }
@@ -955,28 +977,28 @@ HTMLParser.polyfill = function() {
         return {};
     }
 
-    HTMLNode.prototype.addEventListener = function(event, func){
-        event =  event +"";
-        if(!this.__events__)
+    HTMLNode.prototype.addEventListener = function(event, func) {
+        event = event + "";
+        if (!this.__events__)
             this.__events__ = new Map();
 
-        if(!this.__events__.has(event))
+        if (!this.__events__.has(event))
             this.__events__.set(event, new Set)
 
         this.__events__.get(event).add(func);
     }
 
-    HTMLNode.prototype.removeEventListener = function(event, func){
-        event =  event +"";
-        if(!this.__events__) return;
-        if(this.__events__.has(event))
+    HTMLNode.prototype.removeEventListener = function(event, func) {
+        event = event + "";
+        if (!this.__events__) return;
+        if (this.__events__.has(event))
             this.__events__.get(event).delete(func);
     }
 
-    HTMLNode.prototype.runEvent = function(event_name, event_object){
+    HTMLNode.prototype.runEvent = function(event_name, event_object) {
 
-        if(this.__events__ && this.__events__.has(event_name +""))
-            for(const funct of this.__events__.get(event_name + "").values())
+        if (this.__events__ && this.__events__.has(event_name + ""))
+            for (const funct of this.__events__.get(event_name + "").values())
                 funct(event_object)
     }
 
