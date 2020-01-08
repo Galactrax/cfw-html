@@ -385,14 +385,14 @@ class HTMLNode {
             other_lex.IWS = false;
             other_lex.n;
             other_lex.IWS = true;
-            if ((other_lex.sl - other_lex.off) < 2) {
+            //if ((other_lex.sl - other_lex.off) < 2) {
                 //No data
                 //TODO
                 //throw new Error("Unexpected end of input");
-            } else {
+            //} else {
                 let text_node = this.processTextNodeHook(other_lex, false);
                 if (text_node) this.addChild(text_node);
-            }
+            //}
 
         }
     }
@@ -765,12 +765,12 @@ class HTMLNode {
 
     processTextNodeHook(lex, IS_INNER_HTML) {
         if (!IS_INNER_HTML)
-            return new TextNode(lex.trim(1).slice());
+            return new TextNode(lex.slice());
 
         let t = lex.trim(1);
 
-        if (t.string_length > 0)
-            return new TextNode(t.slice());
+        //if (t.string_length > 0)
+            return new TextNode(lex.slice());
 
         return null;
     }
