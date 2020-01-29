@@ -1,6 +1,6 @@
 {
   "name": "@candlefw/html",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "HTML Parser / Virtual Dom",
   "main": "source/html.mjs",
   "scripts": {
@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/galactrax/cfw-html#readme",
   "dependencies": {
-    "@candlefw/ll": "latest",
+    "@candlefw/ll": "0.1.5",
     "@candlefw/url": "0.0.10",
     "@candlefw/whind": "0.3.6"
   },
