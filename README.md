@@ -1,6 +1,15 @@
-# CandleFW **HTML**
+<h1 align=center>
+    <img src="./flavor/cfw-flame-w-lib.svg" type="text/svg" rel="svg" height=80>
+</h1>
 
-CandleFW HTML is an HTML parser that builds a node graph of HTML elements. It provides methods for hooking into the parsing process to generate custom HTML node graphs.
+<h3 align=center>Parsing - Editing - Generating</h3>
+
+<p align=center> <sub><b>v0.0.14</b></sub> </p>
+
+#
+
+
+CandleFW HTML is a HTML parser that builds a node graph of HTML elements. It provides methods for hooking into the parsing process to generate custom HTML node graphs.
 
 ## Install
 
