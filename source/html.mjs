@@ -1,4 +1,4 @@
-import whind from "@candlefw/wind";
+import wind from "@candlefw/wind";
 import URL from "@candlefw/url";
 import ll from "@candlefw/ll";
 
@@ -713,7 +713,7 @@ class HTMLNode {
      */
     async parse(lex, url = new URL(0, !!1)) {
 
-        if (typeof (lex) == "string") lex = whind(lex);
+        if (typeof (lex) == "string") lex = wind(lex);
 
         lex.IWS = false;
 
@@ -751,7 +751,7 @@ class HTMLNode {
 
         if (CAN_FETCH) {
             return this.url.fetchText().then((text) => {
-                let lexer = whind(text);
+                let lexer = wind(text);
                 return this.parseRunner(lexer, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, this.url);
             }).catch((e) => {
                 console.error(e);
@@ -801,7 +801,7 @@ class HTMLNode {
         this.fch = null;
 
         if (text)
-            this.parseRunner(whind(text + ""), true, true, this.par);
+            this.parseRunner(wind(text + ""), true, true, this.par);
     }
 
     get innerText() {
@@ -860,7 +860,7 @@ ll.mixinTree(HTMLNode);
  * @memberof module:wick.core
  * @alias html
  */
-const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root.parse(whind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"), url)));
+const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root.parse(wind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"), url)));
 
 export { HTMLNode, HTMLParser, TextNode };
 
