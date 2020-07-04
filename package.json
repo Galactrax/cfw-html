@@ -25,7 +25,7 @@
   "dependencies": {
     "@candlefw/ll": "0.1.5",
     "@candlefw/url": "0.0.10",
-    "@candlefw/whind": "0.3.6"
+    "@candlefw/wind": "0.3.6"
   },
   "devDependencies": {
     "chai": "^4.2.0",
