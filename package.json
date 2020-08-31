@@ -1,8 +1,10 @@
 {
   "name": "@candlefw/html",
-  "version": "0.0.14",
-  "description": "HTML Parser / Virtual Dom",
-  "main": "source/html.mjs",
+  "version": "0.1.0",
+  "description": "HTML Parser and DOM Polyfill",
+  "main": "./build/library/html.js",
+  "types": "./build/types/html.d.ts",
+  "type": "module",
   "scripts": {
     "test": "mocha test/test.js -r esm",
     "build": "rollup --config ./build/config/config.js",
@@ -23,18 +25,10 @@
   },
   "homepage": "https://github.com/galactrax/cfw-html#readme",
   "dependencies": {
-    "@candlefw/ll": "0.1.5",
-    "@candlefw/url": "0.0.10",
-    "@candlefw/wind": "0.3.6"
+    "@candlefw/url": "latest",
+    "@candlefw/wind": "latest"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "esm": "^3.0.84",
-    "jsdom": "^16.0.1",
-    "mocha": "^7.0.1",
-    "rollup": "^1.30.1",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-resolve": "0.0.1-predev.1"
+    "@candlefw/test": "latest"
   }
 }

@@ -1,6 +1,6 @@
-import wind from "@candlefw/wind";
+import wind, { Lexer } from "@candlefw/wind";
 import URL from "@candlefw/url";
-import ll from "@candlefw/ll";
+import ll from "./ll.js";
 
 /** NODE TYPE IDENTIFIERS **/
 const HTML = 0;
@@ -29,11 +29,19 @@ function classList(this_arg, list) {
  */
 class TextNode {
 
+    data: string;
+
+    par: HTMLNode;
+
+    nxt: HTMLNode | TextNode;
+
+    prv: HTMLNode | TextNode;
+
     constructor(str = "") {
         /**
          * The text value
          */
-        this.txt = str;
+        this.data = str;
     }
 
     /**
@@ -47,17 +55,13 @@ class TextNode {
         return this.par;
     }
 
-    set data(e) { this.txt = e; }
-
-    get data() { return this.txt; }
-
     /**
      * Returns a string representation of the object.
      * @param      {string}  str     Optional string passed down from calling method.
      * @return     {string}  String representation of the object.
      */
     toString(off = 0) {
-        return `${this.txt}`;
+        return `${this.data}`;
     }
 
     /**
@@ -65,7 +69,7 @@ class TextNode {
      * @param      {HTMLElement}  parent  The real html element.
      */
     build(parent) {
-        parent.appendChild(document.createTextNode(this.txt));
+        parent.appendChild(document.createTextNode(this.data));
     }
 
     set type(e) {
@@ -90,9 +94,28 @@ ll.mixinTree(TextNode);
  * Handles the parsing of HTML strings.
  */
 class HTMLNode {
-    set type(e) {
+    attributes: any[];
 
-    }
+    tag: string;
+
+    url?: URL;
+
+    DTD: boolean;
+
+    single: boolean;
+
+    line: number;
+
+    pos: Lexer;
+
+    fch: HTMLNode | TextNode;
+
+    par: HTMLNode;
+
+    nxt: HTMLNode | TextNode;
+
+    prv: HTMLNode | TextNode;
+
     constructor() {
 
         /**
@@ -100,12 +123,6 @@ class HTMLNode {
          * @public
          */
         this.attributes = [];
-
-        /**
-         * Any Comment Lines found within.
-         * @private
-         */
-        //this.dtd_nodes = [];
 
         /**
          * The tag name of the object.
@@ -129,12 +146,6 @@ class HTMLNode {
          * True if the element is a single tag element. 
          */
         this.single = false;
-
-
-        //Charactar positional information from input.
-        this.line = 0;
-        this.char = 0;
-        this.offset = 0;
 
     }
 
@@ -173,7 +184,7 @@ class HTMLNode {
     }
 
     get lastChild() {
-        return this.fch ? this.fch.previous : null;
+        return this.fch ? this.fch.prv : null;
     }
 
     get previousElementSibling() {
@@ -574,9 +585,7 @@ class HTMLNode {
                             URL = this.parseOpenTag(lex.n, false, old_url);
                             lex.PARSE_STRING = true;
 
-                            this.char = lex.char;
-                            this.offset = lex.off;
-                            this.line = lex.line;
+                            this.pos = lex.copy();
 
                             start = lex.pos + 1;
                             lex.IWS = false;
@@ -864,9 +873,14 @@ const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root i
 
 export { HTMLNode, HTMLParser, TextNode };
 
-HTMLParser.polyfill = function () {
+let SERVER_SET = false;
 
-    URL.polyfill();
+HTMLParser.server = async function () {
+
+    if (SERVER_SET) return;
+    SERVER_SET = true;
+
+    await URL.server();
 
     if (typeof (global) !== "undefined") {
         global.HTMLElement = HTMLNode;
@@ -877,7 +891,11 @@ HTMLParser.polyfill = function () {
             global.document = {};
 
         Object.assign(global.document, {
-
+            createElementNS: function (ns, tag) {
+                let node = new HTMLElement();
+                node.tag = tag.toString().toLowerCase();
+                return node;
+            },
             createElement: function (tag) {
                 let node = new HTMLElement();
                 node.tag = tag.toString().toLowerCase();
