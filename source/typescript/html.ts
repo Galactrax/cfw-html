@@ -1,5 +1,4 @@
 import wind, { Lexer } from "@candlefw/wind";
-import URL from "@candlefw/url";
 import ll from "./ll.js";
 
 /** NODE TYPE IDENTIFIERS **/
@@ -97,9 +96,6 @@ class HTMLNode {
     attributes: any[];
 
     tag: string;
-
-    url?: URL;
-
     DTD: boolean;
 
     single: boolean;
@@ -129,12 +125,6 @@ class HTMLNode {
          * @public
          */
         this.tag = "";
-
-        /**
-         * A URL instance when set.
-         * @private
-         */
-        this.url = null;
 
         /**
          * Whether the node is a DTD, such as a comment.
@@ -328,7 +318,7 @@ class HTMLNode {
      * @return     {string}  String representation of the object.
      * @public
      */
-    toString(off = 0) {
+    toString(off: number = 0): string {
 
         let o = offset.repeat(off);
 
@@ -354,7 +344,7 @@ class HTMLNode {
         return str + `${o}</${this.tag}>\n`;
     }
 
-    innerToString(off) {
+    innerToString(off: number = 0): string {
         let str = "";
         for (let node = this.fch; node;
             (node = this.getNextChild(node))) {
@@ -362,6 +352,7 @@ class HTMLNode {
         }
         return str;
     }
+
 
 
     /******************************************* PARSING ******************************************************************************************************************/
@@ -375,7 +366,7 @@ class HTMLNode {
      * @param      {start}  start   The starting point of the data slice
      * @private
      */
-    createTextNode(lex, start, end) {
+    private createTextNode(lex: Lexer, start: number = 0, end: number = 0) {
 
         if (end) {
             const other_lex = lex.copy();
@@ -416,8 +407,8 @@ class HTMLNode {
      * @param {Object} attribs - An object which will receive the attribute keys and values. 
      * @private
      */
-    parseOpenTag(lex, DTD, old_url) {
-        let HAS_URL = false;
+    private parseOpenTag(lex: Lexer, DTD: any) {
+
         lex.PARSE_STRING = false; // Want to make sure lex creates string tokens. 
 
         while (!lex.END && lex.text !== ">" && lex.text !== "/") {
@@ -485,11 +476,6 @@ class HTMLNode {
                 }
             }
 
-            if (attrib_name == "url") {
-                this.url = URL.resolveRelative(out_lex.slice(), old_url);
-                HAS_URL = true;
-            }
-
             let attrib = this.processAttributeHook(attrib_name, out_lex);
 
             if (attrib)
@@ -501,10 +487,10 @@ class HTMLNode {
 
         lex.PARSE_STRING = true; // Reset lex to ignore string tokens.
 
-        return HAS_URL;
+        return false;
     }
 
-    async parseRunner(lex = null, OPENED = false, IGNORE_TEXT_TILL_CLOSE_TAG = false, parent = null, old_url = new URL(0, !!1)) {
+    parseRunner(lex = null, OPENED = false, IGNORE_TEXT_TILL_CLOSE_TAG = false, parent = null) {
         let start = lex.pos;
         let end = lex.pos;
         let HAS_INNER_TEXT = false;
@@ -556,7 +542,7 @@ class HTMLNode {
                         lex.a(">");
 
                         lex.PARSE_STRING = false;
-                        return await this.endOfElementHook(lex, parent);
+                        return this.endOfElementHook(lex, parent);
                     }
 
                     if (pk.ch == "!") {
@@ -572,17 +558,16 @@ class HTMLNode {
 
                         //Open tag
                         if (!OPENED) {
-                            let URL = false;
                             this.DTD = false;
                             this.attributes.length = 0;
 
                             //Expect tag name 
                             this.tag = lex.n.tx.toLowerCase();
 
-
-
                             lex.PARSE_STRING = false;
-                            URL = this.parseOpenTag(lex.n, false, old_url);
+
+                            this.parseOpenTag(lex.n, false);
+
                             lex.PARSE_STRING = true;
 
                             this.pos = lex.copy();
@@ -600,7 +585,7 @@ class HTMLNode {
 
                                 //This element is self closing and does not have a body.
                             } else {
-                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (await this.ignoreTillHook(this.tag, lex));
+                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (this.ignoreTillHook(this.tag, lex));
                                 OPENED = true;
                             }
 
@@ -614,30 +599,12 @@ class HTMLNode {
                                 start = lex.pos;
                             }
 
-                            if (URL) {
-
-                                //Need to block against infinitely recursive URL fetches. 
-
-                                //Hook to pull in data from remote resource
-                                lex.PARSE_STRING = false;
-
-                                await this.processFetchHook(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, parent);
-
-                                lex.PARSE_STRING = true;
-
-                                if (this.selfClosingTagHook(this.tag))
-                                    return this;
-
-                                // Tags without matching end tags.
-                                return this.parseRunner(lex, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, old_url);
-                            }
-
 
                             if (SELF_CLOSING) {
                                 // Tags without matching end tags.
                                 this.single = true;
 
-                                return (await this.endOfElementHook(lex, parent)) || this;
+                                return (this.endOfElementHook(lex, parent)) || this;
                             }
 
                             continue;
@@ -655,27 +622,21 @@ class HTMLNode {
                             }
 
                             //New Child node found
-                            let node = await this.createHTMLNodeHook(lex.pk.tx, lex.off, lex, this);
+                            let node = this.createHTMLNodeHook(lex.pk.tx, lex.off, lex, this);
 
                             if (node) {
 
                                 node.par = this;
 
-                                node = await node.parseRunner(lex, false, false, this, this.url || old_url);
+                                node = node.parseRunner(lex, false, false, this);
 
                                 node.par = null;
 
                                 node.parent = this;
 
-
-                                if (!this.url)
-                                    this.url = old_url;
-
                                 if (node.DTD) this.removeChild(node);
                             }
 
-                            if (!this.url)
-                                this.url = old_url;
                             lex.IWS = false;
                             start = lex.pos;
                             end = lex.pos;
@@ -720,13 +681,13 @@ class HTMLNode {
      * @return     {Promise}  
      * @private
      */
-    async parse(lex, url = new URL(0, !!1)) {
+    parse(lex) {
 
         if (typeof (lex) == "string") lex = wind(lex);
 
         lex.IWS = false;
 
-        return await this.parseRunner(lex, false, false, null, url);
+        return this.parseRunner(lex, false, false, null);
     }
 
     /******************************************* HOOKS ******************************************************************************************************************/
@@ -737,38 +698,12 @@ class HTMLNode {
         return ["input", "br", "img", "rect"].includes(tag);
     }
 
-    async ignoreTillHook(tag) {
+    ignoreTillHook(tag) {
         // Special character escaping tags.
         return ["script", "style", "pre"].includes(tag);
     }
 
-    async createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
-
-    processFetchHook(lexer, OPENED, IGNORE_TEXT_TILL_CLOSE_TAG, parent, url) {
-        let path = this.url.path,
-            CAN_FETCH = true;
-
-        //make sure URL is not already called by a parent.
-        while (parent) {
-            if (parent.url && parent.url.path == path) {
-                console.warn(`Preventing recursion on resource ${this.url.path}`);
-                CAN_FETCH = false;
-                break;
-            }
-            parent = parent.par;
-        }
-
-        if (CAN_FETCH) {
-            return this.url.fetchText().then((text) => {
-                let lexer = wind(text);
-                return this.parseRunner(lexer, true, IGNORE_TEXT_TILL_CLOSE_TAG, this, this.url);
-            }).catch((e) => {
-                console.error(e);
-                return this;
-            });
-        }
-        return null;
-    }
+    createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
 
     processAttributeHook(name, lex) { return { IGNORE: false, name, value: lex.slice() }; }
 
@@ -869,28 +804,25 @@ ll.mixinTree(HTMLNode);
  * @memberof module:wick.core
  * @alias html
  */
-const HTMLParser = (html_string, root = null, url) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root.parse(wind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"), url)));
+const HTMLParser = (html_string, root = null) => (root = (!root || !(root instanceof HTMLNode)) ? new HTMLNode() : root, root.parse(wind(html_string.replace(/\&lt;/g, "<").replace(/\&gt;/g, ">"))));
 
 export { HTMLNode, HTMLParser, TextNode };
 
 let SERVER_SET = false;
 
-HTMLParser.server = async function () {
+HTMLParser.server = function () {
 
     if (SERVER_SET) return;
+
     SERVER_SET = true;
 
-    await URL.server();
-
     if (typeof (global) !== "undefined") {
+
         global.HTMLElement = HTMLNode;
         global.TextNode = TextNode;
         global.Text = TextNode;
 
-        if (!global.document)
-            global.document = {};
-
-        Object.assign(global.document, {
+        const document = {
             createElementNS: function (ns, tag) {
                 let node = new HTMLElement();
                 node.tag = tag.toString().toLowerCase();
@@ -905,6 +837,11 @@ HTMLParser.server = async function () {
                 let node = new TextNode(text);
                 return node;
             }
+        };
+
+        Object.assign(global, {
+            window: { document },
+            document
         });
     }
 
@@ -943,13 +880,6 @@ HTMLParser.server = async function () {
             throw new Error(`NotSupportedError: Cannot attach a shadow DOM to a ${this.tag || "undefined"} element`);
         }
     };
-    /*
-    HTMLNode.prototype.insertBefore = function(newNode, referenceNode) {
-        if (referenceNode.par == this) {
-            referenceNode.insertBefore(newNode);
-        }
-    }
-    */
 
     HTMLNode.prototype.replaceNode = function (newNode, oldNode) {
         if (oldNode.par == this) {
