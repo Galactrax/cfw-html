@@ -6,9 +6,9 @@
   "types": "./build/types/html.d.ts",
   "type": "module",
   "scripts": {
-    "test": "mocha test/test.js -r esm",
-    "build": "rollup --config ./build/config/config.js",
-    "build.watch": "rollup --config  ./build/config/config.js --watch"
+    "prepublishOnly": "tsc -p ./tsconfig.json && yarn test",
+    "test": "cfw.test ./test/**",
+    "test.watch": "cfw.test -w ./test/**"
   },
   "repository": {
     "type": "git",
@@ -25,10 +25,10 @@
   },
   "homepage": "https://github.com/galactrax/cfw-html#readme",
   "dependencies": {
-    "@candlefw/url": "latest",
-    "@candlefw/wind": "latest"
+    "@candlefw/url": "*",
+    "@candlefw/wind": "*"
   },
   "devDependencies": {
-    "@candlefw/test": "latest"
+    "@candlefw/test": "*"
   }
 }

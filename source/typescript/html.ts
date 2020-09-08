@@ -112,6 +112,8 @@ class HTMLNode {
 
     prv: HTMLNode | TextNode;
 
+    parent: HTMLNode;
+
     constructor() {
 
         /**
@@ -185,7 +187,7 @@ class HTMLNode {
 
             let node = this.prv;
 
-            while (node && node != gaurd) {
+            while (node && node != guard) {
                 if (node.type == HTML)
                     return node;
                 node = node.prv;
@@ -239,9 +241,12 @@ class HTMLNode {
      */
     getTag(tag, INCLUDE_DESCENDANTS = false, array = []) {
         for (let node = this.fch; node;
+            //@ts-ignore
             (node = this.getNextChild(node))) {
             if (node.type == HTML) {
+                //@ts-ignore
                 if (node.tag == tag) array.push(node);
+                //@ts-ignore
                 if (INCLUDE_DESCENDANTS) node.getTag(tag, INCLUDE_DESCENDANTS, array);
             }
         }
@@ -260,9 +265,13 @@ class HTMLNode {
      */
     getClass(_class, INCLUDE_DESCENDANTS = false, array = []) {
         for (let node = this.fch; node;
+            //@ts-ignore
             (node = this.getNextChild(node))) {
+            //@ts-ignore
             if (node.type == HTML) {
+                //@ts-ignore
                 if (node.class.includes(_class)) array.push(node);
+                //@ts-ignore
                 if (INCLUDE_DESCENDANTS) node.getClass(_class, INCLUDE_DESCENDANTS, array);
             }
         }
@@ -280,9 +289,12 @@ class HTMLNode {
      */
     getID(id, INCLUDE_DESCENDANTS = false) {
         for (let node = this.fch, ch; node;
+            //@ts-ignore
             (node = this.getNextChild(node))) {
             if (node.type == HTML) {
+                //@ts-ignore
                 if (node.id == id) return node;
+                //@ts-ignore
                 if (INCLUDE_DESCENDANTS && (ch = node.getID(id, INCLUDE_DESCENDANTS))) return ch;
             }
         }
@@ -347,6 +359,7 @@ class HTMLNode {
     innerToString(off: number = 0): string {
         let str = "";
         for (let node = this.fch; node;
+            //@ts-ignore
             (node = this.getNextChild(node))) {
             str += node.toString(off);
         }
@@ -376,6 +389,7 @@ class HTMLNode {
             other_lex.IWS = false;
             other_lex.next();
             const text_node = this.processTextNodeHook(other_lex, true);
+            //@ts-ignore
             if (text_node) this.addChild(text_node);
         } else if (start <= lex.off) {
             let other_lex = lex.copy();
@@ -393,6 +407,7 @@ class HTMLNode {
             //throw new Error("Unexpected end of input");
             //} else {
             let text_node = this.processTextNodeHook(other_lex, false);
+            //@ts-ignore
             if (text_node) this.addChild(text_node);
             //}
 
@@ -534,6 +549,7 @@ class HTMLNode {
                             //Create new node with the open tag 
                             let insert = new HTMLNode();
                             insert.tag = name;
+                            //@ts-ignore
                             this.addChild(insert);
                         }
 
@@ -542,7 +558,7 @@ class HTMLNode {
                         lex.a(">");
 
                         lex.PARSE_STRING = false;
-                        return this.endOfElementHook(lex, parent);
+                        return this.endOfElementHook();
                     }
 
                     if (pk.ch == "!") {
@@ -585,7 +601,7 @@ class HTMLNode {
 
                                 //This element is self closing and does not have a body.
                             } else {
-                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (this.ignoreTillHook(this.tag, lex));
+                                HAS_INNER_TEXT = IGNORE_TEXT_TILL_CLOSE_TAG = (this.ignoreTillHook(this.tag));
                                 OPENED = true;
                             }
 
@@ -604,7 +620,7 @@ class HTMLNode {
                                 // Tags without matching end tags.
                                 this.single = true;
 
-                                return (this.endOfElementHook(lex, parent)) || this;
+                                return (this.endOfElementHook()) || this;
                             }
 
                             continue;
@@ -622,6 +638,7 @@ class HTMLNode {
                             }
 
                             //New Child node found
+                            //@ts-ignore
                             let node = this.createHTMLNodeHook(lex.pk.tx, lex.off, lex, this);
 
                             if (node) {
@@ -633,7 +650,7 @@ class HTMLNode {
                                 node.par = null;
 
                                 node.parent = this;
-
+                                //@ts-ignore
                                 if (node.DTD) this.removeChild(node);
                             }
 
@@ -703,7 +720,7 @@ class HTMLNode {
         return ["script", "style", "pre"].includes(tag);
     }
 
-    createHTMLNodeHook(tag, start) { return new HTMLNode(tag); }
+    createHTMLNodeHook(tag, start) { return new HTMLNode(); }
 
     processAttributeHook(name, lex) { return { IGNORE: false, name, value: lex.slice() }; }
 
@@ -723,6 +740,7 @@ class HTMLNode {
         Deep Clone of Element
     */
     clone() {
+        //@ts-ignore
         const clone = new this.constructor();
 
         clone.tag = this.tag;
@@ -731,11 +749,6 @@ class HTMLNode {
 
         return clone;
     }
-
-    get innerText() {
-        return this.innerToTextString();
-    }
-
 
     get innerHTML() {
         return this.innerToString();
@@ -751,6 +764,7 @@ class HTMLNode {
     get innerText() {
         let str = "";
         for (let node = this.fch; node;
+            //@ts-ignore
             (node = this.getNextChild(node))) {
             str += node.innerText;
         }
@@ -759,37 +773,9 @@ class HTMLNode {
 
     set innerText(e) { }
 
-    get parentElement() {
-        return this.par;
-    }
-
     get parentNode() {
         return this.par;
     }
-
-    build(parent) {
-        let ele = document.createElement(this.tag);
-
-        for (let i = 0, l = this.attributes.length; i < l; i++) {
-            let attr = this.attributes[i];
-            ele.setAttribute(attr.name, attr.value);
-        }
-        //let passing_element = ele;
-        let passing_element = (this.tag == "template") ? ele.content : ele;
-        for (let node = this.fch; node;
-            (node = this.getNextChild(node))) {
-            node.build(passing_element);
-        }
-
-        if (parent) parent.appendChild(ele);
-
-        return ele;
-    }
-
-    get style() {
-        return this.getStyleObject();
-    }
-
 }
 
 ll.mixinTree(HTMLNode);
@@ -817,19 +803,23 @@ HTMLParser.server = function () {
     SERVER_SET = true;
 
     if (typeof (global) !== "undefined") {
-
+        //@ts-ignore
         global.HTMLElement = HTMLNode;
+        //@ts-ignore
         global.TextNode = TextNode;
+        //@ts-ignore
         global.Text = TextNode;
 
         const document = {
             createElementNS: function (ns, tag) {
                 let node = new HTMLElement();
+                //@ts-ignore
                 node.tag = tag.toString().toLowerCase();
                 return node;
             },
             createElement: function (tag) {
                 let node = new HTMLElement();
+                //@ts-ignore
                 node.tag = tag.toString().toLowerCase();
                 return node;
             },
@@ -846,7 +836,7 @@ HTMLParser.server = function () {
     }
 
 
-
+    //@ts-ignore
     HTMLNode.prototype.attachShadow = function (mode, blah) {
 
         if (this.shadow)
@@ -880,7 +870,7 @@ HTMLParser.server = function () {
             throw new Error(`NotSupportedError: Cannot attach a shadow DOM to a ${this.tag || "undefined"} element`);
         }
     };
-
+    //@ts-ignore
     HTMLNode.prototype.replaceNode = function (newNode, oldNode) {
         if (oldNode.par == this) {
             oldNode.insertBefore(newNode);
@@ -888,7 +878,7 @@ HTMLParser.server = function () {
         }
         return newNode;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.replaceChild = function (newNode, oldNode) {
         if (oldNode.par == this) {
             oldNode.insertBefore(newNode);
@@ -896,25 +886,25 @@ HTMLParser.server = function () {
         }
         return newNode;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.hasChildNodes = function () {
         return !!this.fch;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.previousSibling = function () {
         return this.pre;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.nextSibling = function () {
         return this.nxt;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.children = function () {
         return new Proxy(this, {
             get: function (obj, prop) {
 
-                if (!isNaN(prop)) {
-                    console.log("ASDASDA");
+                if (!isNaN(<number>prop)) {
+                    //@ts-ignore
                     return ll.children.call(obj).filter(e => e instanceof HTMLNode)[prop];
                 }
 
@@ -925,12 +915,12 @@ HTMLParser.server = function () {
         });
     };
 
-
+    //@ts-ignore
     HTMLNode.prototype.childNodes = function () {
         return new Proxy(this, {
             get: function (obj, prop) {
 
-                if (!isNaN(prop)) {
+                if (!isNaN(<number>prop)) {
                     return obj.children[prop];
                 }
 
@@ -940,11 +930,11 @@ HTMLParser.server = function () {
             }
         });
     };
-
+    //@ts-ignore
     HTMLNode.prototype.getStyleObject = function () {
         return {};
     };
-
+    //@ts-ignore
     HTMLNode.prototype.addEventListener = function (event, func) {
         event = event + "";
         if (!this.__events__)
@@ -955,21 +945,21 @@ HTMLParser.server = function () {
 
         this.__events__.get(event).add(func);
     };
-
+    //@ts-ignore
     HTMLNode.prototype.removeEventListener = function (event, func) {
         event = event + "";
         if (!this.__events__) return;
         if (this.__events__.has(event))
             this.__events__.get(event).delete(func);
     };
-
+    //@ts-ignore
     HTMLNode.prototype.runEvent = function (event_name, event_object) {
 
         if (this.__events__ && this.__events__.has(event_name + ""))
             for (const funct of this.__events__.get(event_name + "").values())
                 funct(event_object);
     };
-
+    //@ts-ignore
     HTMLNode.prototype.contains = function (otherNode) {
         let node = otherNode;
         while (node.par) {
@@ -979,7 +969,7 @@ HTMLParser.server = function () {
         }
         return false;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.appendChild = function (child) {
         this.addChild(child);
     };
@@ -990,7 +980,7 @@ HTMLParser.server = function () {
             return attr.value;
         return null;
     };
-
+    //@ts-ignore
     HTMLNode.prototype.setAttribute = function (name, value) {
         let attr = this.getAttrib(name);
         if (attr)
