@@ -28,7 +28,7 @@ function classList(this_arg, list) {
  */
 class TextNode {
 
-    data: string;
+    private _data: string;
 
     par: HTMLNode;
 
@@ -41,6 +41,15 @@ class TextNode {
          * The text value
          */
         this.data = str;
+    }
+
+    get data(): string {
+        return this._data;
+    }
+
+    set data(d: string) {
+        this._data = String(d);
+        this.bubbleUpdate();
     }
 
     /**
@@ -81,6 +90,11 @@ class TextNode {
 
     set innerText(e) {
 
+    }
+
+    bubbleUpdate() {
+        if (this.par)
+            this.par.bubbleUpdate();
     }
 
 }
@@ -759,6 +773,8 @@ class HTMLNode {
 
         if (text)
             this.parseRunner(wind(text + ""), true, true, this.par);
+
+        this.bubbleUpdate();
     }
 
     get innerText() {
@@ -775,6 +791,11 @@ class HTMLNode {
 
     get parentNode() {
         return this.par;
+    }
+
+    bubbleUpdate() {
+        if (this.par)
+            this.par.bubbleUpdate();
     }
 }
 
@@ -876,6 +897,9 @@ HTMLParser.server = function () {
             oldNode.insertBefore(newNode);
             oldNode.parent = null;
         }
+
+        this.bubbleUpdate();
+
         return newNode;
     };
     //@ts-ignore
@@ -884,6 +908,9 @@ HTMLParser.server = function () {
             oldNode.insertBefore(newNode);
             oldNode.parent = null;
         }
+
+        this.bubbleUpdate();
+
         return newNode;
     };
     //@ts-ignore
@@ -958,6 +985,8 @@ HTMLParser.server = function () {
         if (this.__events__ && this.__events__.has(event_name + ""))
             for (const funct of this.__events__.get(event_name + "").values())
                 funct(event_object);
+
+        this.bubbleUpdate();
     };
     //@ts-ignore
     HTMLNode.prototype.contains = function (otherNode) {
@@ -987,6 +1016,8 @@ HTMLParser.server = function () {
             attr.value = value;
         else
             this.attributes.push({ name, value });
+
+        this.bubbleUpdate();
     };
 };
 
