@@ -7,8 +7,11 @@ const TEXT = 1;
 const offset = "    ";
 
 // Pollyfill of HTMLElement classList
-function classList(this_arg, list) {
+function classList(this_arg, list: string[]) {
     Object.assign(list, {
+        contains: str => {
+            return list.includes(str);
+        },
         add: (name) => {
             let attrib = this_arg.getAttrib("class");
             if (attrib) {
@@ -48,7 +51,9 @@ class TextNode {
     }
 
     set data(d: string) {
+
         this._data = String(d);
+
         this.bubbleUpdate();
     }
 
@@ -156,7 +161,9 @@ class HTMLNode {
     }
 
     /******************************************* ATTRIBUTE AND ELEMENT ACCESS ******************************************************************************************************************/
-
+    get style() {
+        return {};
+    }
     /**
      * Returns the type of `0` (`HTML`)
      * @public
@@ -170,9 +177,12 @@ class HTMLNode {
     }
 
     get classList() {
+
         let classes = this.getAttrib("class");
+
         if (classes && typeof (classes.value) === "string")
             return classList(this, classes.value.split(" "));
+
         return classList(this, []);
     }
 
@@ -849,6 +859,9 @@ HTMLParser.server = function () {
                 return node;
             }
         };
+
+        document.head = document.createElement("head");
+        document.body = document.createElement("body");
 
         Object.assign(global, {
             window: { document },
