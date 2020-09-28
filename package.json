@@ -1,6 +1,6 @@
 {
   "name": "@candlefw/html",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "HTML Parser and DOM Polyfill",
   "main": "./build/library/html.js",
   "types": "./build/types/html.d.ts",
