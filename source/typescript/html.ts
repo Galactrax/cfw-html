@@ -187,9 +187,21 @@ class HTMLNode {
     }
 
     getAttribute(name) {
-        let attrib = this.getAttrib(name);
-        return (attrib) ? attrib.value : void 0;
-    }
+        let attr = this.getAttrib(name);
+        if (attr)
+            return attr.value;
+        return null;
+    };
+
+    setAttribute(name, value) {
+        let attr = this.getAttrib(name);
+        if (attr)
+            attr.value = value;
+        else
+            this.attributes.push({ name, value });
+
+        this.bubbleUpdate();
+    };
 
     get parentElement() {
         return this.par;
@@ -1016,22 +1028,7 @@ HTMLParser.server = function () {
         this.addChild(child);
     };
 
-    HTMLNode.prototype.getAttribute = function (name) {
-        let attr = this.getAttrib(name);
-        if (attr)
-            return attr.value;
-        return null;
-    };
-    //@ts-ignore
-    HTMLNode.prototype.setAttribute = function (name, value) {
-        let attr = this.getAttrib(name);
-        if (attr)
-            attr.value = value;
-        else
-            this.attributes.push({ name, value });
 
-        this.bubbleUpdate();
-    };
 };
 
 export default HTMLParser;
