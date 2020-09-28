@@ -809,6 +809,18 @@ class HTMLNode {
         return str;
     }
 
+    get value() {
+        return this.getAttribute("value");
+    }
+
+    set value(v: string) {
+
+        if (typeof v == "string") {
+            this.setAttribute("value", v);
+            this.bubbleUpdate();
+        }
+    }
+
     set innerText(e) { }
 
     get parentNode() {
