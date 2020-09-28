@@ -883,8 +883,9 @@ HTMLParser.server = function () {
                 return node;
             }
         };
-
+        //@ts-ignore
         document.head = document.createElement("head");
+        //@ts-ignore
         document.body = document.createElement("body");
 
         Object.assign(global, {
